@@ -1,0 +1,86 @@
+AIcuNet
+Copyright (c) 2026 The AIcuNet developers
+
+AIcuNet is based on the Tera blockchain software by the Tera Core developers
+(Yuriy Ivanov, progr76@gmail.com):
+  https://github.com/terablockchain/tera
+  Base commit: 8d65eb4a6ef5eb98ca1aea61ae73f805b681dc92 (release 2651, 2022-05-24).
+  The LICENSE file of the base commit is the MIT License (with the author's
+  "Not for evil" note); AIcuNet uses the code under that license. Release 2651 is
+  also published in the author's GitLab repository
+  https://gitlab.com/terafoundation/tera2 (commit 38c2328).
+  The history of the base commit is included in this repository.
+
+All files taken from the base commit keep their original header notices unchanged.
+In the base commit, some file headers carry the labels "@license: EMPERA.NETWORK"
+or "@license: Only for the TERA project", placed there by the upstream author in
+the same release. The text of an "EMPERA NETWORK License" was added by the upstream
+author in the following commit (79b53f4) and is not part of the base commit; no code
+from that or any later upstream commit is used. Where AIcuNet modified a file, the
+lines "Modifications (c) 2026 AIcuNet" and a pointer to LICENSE and NOTICE are added
+below the original header.
+
+File names, identifiers and internal constants inherited from the base commit
+(for example Source/jinn/tera/, terahashlib.js, terabuf.js, web3-tera.js, the
+web3.tera dApp API and the SHARD_NAME "TERA" of the upstream DEV_JINN/MAIN_JINN
+modes) are kept unchanged so that the code can be compared with the base commit.
+They are names only: the AIcuNet network runs with NETWORK and SHARD_NAME "AINET"
+(Source/core/const-mode.js), has its own genesis and does not connect to the
+upstream network.
+
+Most files whose headers in the base commit carry "@license: EMPERA.NETWORK" or
+"@license: Only for the TERA project" (120 of 128) had already been published by the
+upstream author in release 2466 (commit 8c472610b0b83531978f92995618bf5d62c01724,
+2020-12-03) with the header "@license: MIT (not for evil)" and an MIT LICENSE file;
+49 of them are unchanged in code between 2466 and 2651.
+
+AIcuNet is an independent project and is not affiliated with, sponsored or endorsed
+by the Tera Foundation, EMPERA NETWORK or the upstream author.
+
+Main changes by AIcuNet:
+- Network AINET, coin Axinit (AXNT), new genesis state (one genesis account name
+  keeps the earlier ticker "AICU"; it is part of the chain state).
+- Blocks are produced in fixed 3-second time slots.
+- Block reward and its distribution between the miner, a development fund
+  and a development account.
+- Remote auto-update disabled; UPnP off by default; the node HTTP API listens
+  on localhost only.
+- New wallet interface (Source/HTML/aicunet-wallet.html) with safety checks for
+  account creation, key change and transfers.
+
+Third-party files:
+- Source/HTML/JS/three.min.js - three.js r128, MIT License,
+  Copyright (c) 2010-2021 three.js authors (notice kept inside the file).
+- Source/HTML/JS/marked.js - marked, MIT License,
+  Copyright (c) 2011-2018, Christopher Jeffrey (notice kept inside the file).
+- Source/HTML/JS/sha3.js - js-sha3, MIT License,
+  Copyright Chen, Yi-Cyuan 2015-2017 (notice kept inside the file).
+- Source/HTML/JS/highlight.js - highlight.js (https://highlightjs.org/),
+  BSD 3-Clause License, Copyright (c) 2006, Ivan Sagalaev. License text:
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+    * Neither the name of the copyright holder nor the names of its contributors
+      may be used to endorse or promote products derived from this software
+      without specific prior written permission.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+Geo database for map.html (iplocation.db, locationnames.csv):
+These files are not stored in or distributed with this repository. If generated
+from the public DB-IP Lite database (https://db-ip.com), the Creative Commons
+Attribution 4.0 licence applies: IP geolocation data by DB-IP.com, https://db-ip.com.

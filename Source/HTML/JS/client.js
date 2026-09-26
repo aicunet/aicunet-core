@@ -6,13 +6,15 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
 
 window.CLIENT_VERSION = 74;
 window.SERVER_VERSION = 0;
-window.SHARD_NAME = "TERA";
+window.SHARD_NAME = "AINET";
 
 window.SUM_PRECISION = 9;
 

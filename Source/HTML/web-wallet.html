@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-Frame-Options" value="deny">
-    <title>TERA WALLET</title>
+    <title>AIcuNet Wallet</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" href="./tera.ico" type="image/vnd.microsoft.icon">
+    <link rel="shortcut icon" href="./aicu.ico" type="image/vnd.microsoft.icon">
 
     <link rel="stylesheet" href="./CSS/wallet-common.css">
     <link rel="stylesheet" href="./CSS/mobile-wallet.css">
@@ -35,7 +35,7 @@
     <div class="header__wrapper">
         <div class="header__logo">
             <a onclick="SelectTab('TabWelcome')" class="header__logo-link" id="MTabWelcome">
-                <img class="main-logo" src="./PIC/TeraLogo.svg" alt="TERA Foundation">
+                <img class="main-logo" src="./PIC/AICULogo.svg" alt="AIcuNet">
             </a>
         </div>
         <div class="header__right">
@@ -71,23 +71,13 @@
                 <path d="M446.68,530.15l5.59-9.23a19.86,19.86,0,0,0,0-22.68L417.74,442.3l-39.5-64a10.2,10.2,0,0,0-17.63.46L98.31,811.68a10.17,10.17,0,0,0,8.95,15H250.82l-0.05,0h4.28l6.23,0h0a10.12,10.12,0,0,0,8.9-5.3,0,0,0,0,0,0,0l5.89-9.77a9.82,9.82,0,0,0,.74-1.15s0,0,0,0l6.4-10.57c55.06-90.94,107.53-177.76,162.52-268.28C446.12,531.11,446.41,530.63,446.68,530.15Z" />
             </svg>
         </div>
-        <h1 class="welcome__title title">Welcome to TERA Wallet</h1>
-        <p><a onclick="OpenHelp()" class="pointer">Tera Wallet Guide...</a></p>
+        <h1 class="welcome__title title">Welcome to AINET Wallet</h1>
+        <p><a onclick="OpenHelp()" class="pointer">AIcuNet Wallet Guide...</a></p>
         <p><a onclick="SelectTab('TabKeySet')" class="pointer">ATTENTION: Before using the wallet, save the private key.</a></p>
 
-        <DIV class="place_links place_small_links">
-            <BUTTON class="bt_open_link" onclick="OpenDapps(190,'',1)">BRIDGE</BUTTON>
-            <BUTTON class="bt_open_link" onclick="OpenDapps(164,'',1)">SWAP</BUTTON>
-            <a class="bt_open_link" href="https://terafoundation.org/exchanges.html" target="_blank">EXCHANGES</a>
-        </DIV>
 
         <ul id="idStableScroll" align='center' class="social-list">
-            <li class="social-list__item"><a href="https://terafoundation.org/">Web-site</a></li>
-            <li class="social-list__item"><a href="https://bitcointalk.org/index.php?topic=4573801.0">Bitcointalk</a></li>
-            <li class="social-list__item"><a href="https://twitter.com/terafoundation">Twitter</a></li>
-            <li class="social-list__item"><a href="https://t.me/terafoundation">Telegram</a></li>
-            <li class="social-list__item"><a href="https://discord.gg/CvwrbeG">Discord</a></li>
-            <li class="social-list__item"><a href="https://jq.qq.com/?_wv=1027&k=5KpN5fw">QQchat</a></li>
+            <li class="social-list__item"><a href="https://aicunet.com/">Web-site</a></li>
         </ul>
 
     </section>
@@ -173,7 +163,7 @@
         <BR>
         <h2 class="wallet-settings__title title">Network settings</h2>
         <div class="wallet-wrapper" style="padding-top: 0px;">
-        URL RPC: <input type="search" id="idMainServer" placeholder="https://terawallet.org" class="key-field__input" onchange="SaveValues()">
+        URL RPC: <input type="search" id="idMainServer" placeholder="https://your-node-address" class="key-field__input" onchange="SaveValues()">
         </div>
 
     </section>
@@ -182,7 +172,7 @@
         <div class="accounts-info__empty hidden" >
             <p class="accounts-info__counter title"><span class="accounts-info__number">0 Accounts</span></p>
             <p class="title text-center">You have no accounts yet</p>
-            <p class="text-center">Create your first account and start using TERA</p>
+            <p class="text-center">Create your first account and start using AINET</p>
             
             <button class="btn btn--full-width btn--270 accounts-info__btn" onclick="OnViewAddAccount()">+ CREATE A NEW ACCOUNT</button>
         </div>
@@ -229,11 +219,6 @@
         <div class="accounts-info__acc-list hidden">
 
             <div class="accounts-info__counter-wrapper">
-                <DIV class="place_links place_big_links">
-                    <BUTTON class="bt_open_link" onclick="OpenDapps(190,'',1)">BRIDGE</BUTTON>
-                    <BUTTON class="bt_open_link" onclick="OpenDapps(164,'',1)">SWAP</BUTTON>
-                    <a class="bt_open_link" href="https://terafoundation.org/exchanges.html" target="_blank">EXCHANGES</a>
-                </DIV>
 
                 <DIV class="place_accounts">
                     <p class="title" style="font-size: 16px;"><span class="accounts-info__number" id="idListCount">4</span> <span>Account(s)</span></p>
@@ -408,7 +393,7 @@
                     <dt class="confirm-info__title">Amount:</dt>
                     <dd class="confirm-info__descr">
                         <span id="idConfirmAmount" style="color: #ff791a">100000</span>
-                        <span id="idConfirmCurrency">TERA</span>
+                        <span id="idConfirmCurrency">AXNT</span>
                     </dd>
                 </div>
                 <div class="confirm-info__line">
@@ -615,7 +600,7 @@
             <!--<div class="addresses-modal__text-wrap">-->
                 <!--<div class="addresses-modal__item-name">-->
                     <!--<span class="grey-blue-text">Test  name1 </span>-->
-                    <!--<div class="light-grey-text">10 TERA</div>-->
+                    <!--<div class="light-grey-text">10 AXNT</div>-->
                 <!--</div>-->
                 <!--<span class="addresses-modal__id">192834</span>-->
             <!--</div>-->
@@ -629,7 +614,7 @@
             <!--<div class="addresses-modal__text-wrap">-->
                 <!--<div class="addresses-modal__item-name">-->
                     <!--<span class="grey-blue-text">Minecraft is life</span>-->
-                    <!--<div class="light-grey-text">2 000,000000 TERA</div>-->
+                    <!--<div class="light-grey-text">2 000,000000 AXNT</div>-->
                 <!--</div>-->
                 <!--<span class="addresses-modal__id">192834</span>-->
             <!--</div>-->
@@ -716,8 +701,8 @@
     <div class="fixed-status__wrap">
         <div class="fixed-button">
             <select  class="grey-btn select-network" id="idCurNetwork" onchange="ChangeNetwork(1)">
-                <option value="MAIN-JINN.TERA">MAIN-JINN.TERA</option>
-                <option value="TEST-JINN.TEST">TEST-JINN.TEST</option>
+                <option value="MAIN-JINN.AINET" selected>MAIN-JINN.AINET</option>
+                                <option value="TEST-JINN.TEST">TEST-JINN.TEST</option>
             </select>
             <button class="grey-btn reconnect" onclick="ChangeNetwork()" title="Reconnect"><span>RECONNECT</span></button>
             <button class="grey-btn" style="margin-left: 5px;display: none" id="idMobile" onclick="DoMobile(1)" title="Logs"><span>Logs</span></button>

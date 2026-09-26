@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 'use strict';
@@ -424,7 +426,18 @@ function InitClass(Engine)
     
     Engine.ClearChild = function (Child)
     {
-        
+        // ---- guard: УТЕЧКА ПАМЯТИ. ----
+        // zlib-стримы (jinn-zip.js) — НАТИВНЫЕ объекты, вне V8-heap. GC их не собирает,
+        // пока стрим не уничтожен. ClearChild их не трогал, .destroy() не было нигде
+        // во всём Source/. => каждый дисконнект / реконнект / скан порта 38000 оставлял
+        // висеть пару gzip/gunzip-контекстов. За CGNAT реконнекты постоянны
+        // (MAX_CONNECT_TIMEOUT=30с) + сканер долбит 38000 => линейный рост ~8 МБ/час
+        // (наблюдалось 90 -> 152 МБ). Это и есть первопричина, а не потолок кэша.
+        if(Child.EncodeZip)   { try{ Child.EncodeZip.destroy();   }catch(e){} delete Child.EncodeZip;   }
+        if(Child.DecodeZip)   { try{ Child.DecodeZip.destroy();   }catch(e){} delete Child.DecodeZip;   }
+        if(Child.WriterZip)   { try{ Child.WriterZip.destroy();   }catch(e){} delete Child.WriterZip;   }
+        if(Child.WriterUnZip) { try{ Child.WriterUnZip.destroy(); }catch(e){} delete Child.WriterUnZip; }
+
         if(Child.SendBodyTimeCache)
         {
             Child.SendBodyTimeCache.Clear();

@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -106,10 +108,27 @@ function DoCommand(request,response,Type,Path,params,remoteAddress)
 
         var Headers = {'Content-Type':'text/plain'};
 
-        var Ret = F(params[1], response);
+        // Guard: try/catch вокруг вызова handler — иначе TypeError в F()
+        // (например, body="10" для GetBlockList) крашит процесс. Возвращаем 500,
+        // не exit. Headers-sent guard: если handler уже ответил — не writeHead повторно.
+        var Ret;
+        try { Ret = F(params[1], response); }
+        catch(e)
+        {
+            ToLog("DoCommand crash on " + Path + ": " + e);
+            if(!response.headersSent)
+            {
+                response.writeHead(500, Headers);
+                response.end(JSON.stringify({result:0, text:"Internal error"}));
+            }
+            return;
+        }
         if(Ret === null)
         {
-            response.writeHead(200, Headers);
+            // Guard: SendTransactionHex (async via callback) уже вызывает
+            // response.end() — повторный writeHead → ERR_HTTP_HEADERS_SENT.
+            if(!response.headersSent)
+                response.writeHead(200, Headers);
             return;
         }
 
@@ -136,7 +155,7 @@ function DoCommand(request,response,Type,Path,params,remoteAddress)
     switch(method)
     {
         case "":
-            SendWebFile(request, response, "./HTML/wallet.html");
+            SendWebFile(request, response, "./HTML/aicunet-wallet.html");
             break;
 
         case "file":
@@ -249,8 +268,9 @@ function DappTemplateFile(request,response,StrNum)
             if(Data.IconBlockNum)
                 StrIcon="/file/" + Data.IconBlockNum + "/" + Data.IconTrNum;
             else
-                StrIcon="/../Tera.svg";
-            Str = Str.replace(/.\/tera.ico/g, StrIcon);
+                // Placeholder network logo
+                StrIcon="/../AICULogo.svg";
+            Str = Str.replace(/\.\/aicu\.ico/g, StrIcon);
 
             SendGZipData(request, response, Headers, Str);
             return;
@@ -654,6 +674,11 @@ HTTPCaller.GetDappList = function (Params)
 }
 HTTPCaller.GetBlockList = function (Params,response,bOnlyNum)
 {
+    // Guard: Params must be object — иначе падение на body=число ("10")
+    // DoS vector: любой может убить ноду одним POST. Возвращаем ошибку, не падаем.
+    if(typeof Params !== "object" || Params === null)
+        return {result:0, text:"GetBlockList: Params must be object"};
+
     if(!( + Params.CountNum))
         Params.CountNum = 1;
 
@@ -872,10 +897,22 @@ HTTPCaller.GetWalletInfo = function (Params)
         COIN_STORE_NUM:global.COIN_STORE_NUM,
     };
 
-    if(Params.Account)
-        Ret.PrivateKey = GetHexFromArr(WALLET.GetPrivateKey(WALLET.AccountMap[Params.Account]));
-    else
-        Ret.PrivateKey = GetHexFromArr(WALLET.GetPrivateKey());
+    // ---- guard: приватный ключ БОЛЬШЕ НЕ ЕДЕТ В РУТИННОМ ОПРОСЕ. ----
+    // Было: Ret.PrivateKey ставился безусловно. wallet-full.js опрашивает GetWalletInfo
+    // каждые 2 секунды (UpdatesConfigData) => ключ 30 раз в минуту летел в тело ответа,
+    // мимо DApp-кода в той же странице, расширений браузера, devtools, логов, скриншотов.
+    // Клиент ОБЯЗАН ходить на 8880 (SetMining есть только там) — значит это его ключ.
+    // Стало: ключ отдаётся ТОЛЬКО по явному запросу {WithPrivateKey:1}.
+    // Клиент забирает его один раз (wallet-full.js: LoadPrivateKey) и держит в sessionStorage —
+    // подпись транзакций в браузере продолжает работать.
+    // Alias GetCurrentInfo (ниже) наследует это поведение автоматически.
+    if(Params && Params.WithPrivateKey)
+    {
+        if(Params.Account)
+            Ret.PrivateKey = GetHexFromArr(WALLET.GetPrivateKey(WALLET.AccountMap[Params.Account]));
+        else
+            Ret.PrivateKey = GetHexFromArr(WALLET.GetPrivateKey());
+    }
     Ret.PublicKey = WALLET.KeyPair.PubKeyStr;
 
     return Ret;
@@ -891,7 +928,8 @@ HTTPCaller.GetWalletAccounts = function ()
 {
     var Ret = {result:1, arr:ACCOUNTS.GetWalletAccountsByMap(WALLET.AccountMap), };
 
-    Ret.PrivateKey = WALLET.KeyPair.PrivKeyStr;
+    // второй рутинный опрос (wallet-full.js:414, тоже каждые 2 с) — ключ убран.
+    // Проверено: единственный потребитель, SetAccountsData (wallet-lib.js:31), его не читает.
     Ret.PublicKey = WALLET.KeyPair.PubKeyStr;
 
     return Ret;
@@ -2337,6 +2375,33 @@ if(global.HTTP_PORT_NUMBER)
 
         var fromURL = url.parse(request.url);
         var Path = querystring.unescape(fromURL.path);
+
+        // ---- guard: CSRF-гейт. Loopback НЕ спасает. ----
+        // NOPSWD + 127.0.0.1 => CheckPassword=0 (ниже), и DoCommand исполняет ЛЮБОЙ
+        // метод HTTPCaller на POST, поэтому нужна проверка Origin/Referer.
+        // Кросс-origin POST с Content-Type: text/plain — "простой" запрос, preflight
+        // не нужен => без гейта любой сайт в браузере майнера мог бы вслепую дёргать SetMining,
+        // ClearDataBase, TruncateBlockChain, SetWalletKey, SaveConstant+RestartNode.
+        // Ответ он не прочитает (у DoCommand нет ACAO), но записи достаточно.
+        //
+        // Браузер ВСЕГДА шлёт Origin на кросс-origin запрос и не даёт JS его подделать.
+        // Свои страницы шлют Origin = http://127.0.0.1:<HTTP_PORT_NUMBER>.
+        // curl / PowerShell / лаунчер Origin не шлют вовсе => не затронуты.
+        var ReqOrigin = request.headers["origin"];
+        if(ReqOrigin)
+        {
+            var OwnPort = global.HTTP_PORT_NUMBER;
+            var OriginOK = ["http://127.0.0.1:" + OwnPort, "http://localhost:" + OwnPort,
+                            "http://[::1]:" + OwnPort];
+            if(OriginOK.indexOf(ReqOrigin) < 0)
+            {
+                ToLog("CSRF BLOCKED: Origin=" + ReqOrigin + " Path=" + Path, 0);
+                response.writeHead(403, {"Content-Type":"text/plain", "X-Content-Type-Options":"nosniff"});
+                response.end("Forbidden: cross-origin");
+                return;
+            }
+        }
+        // ---- /guard ----
 
         if(!ClientIPMap[remoteAddress])
         {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AIcuNet: coin symbol for Axinit (AXNT) — ∀ (U+2200) drawn as a path (no font, no currentColor); works on dark and light backgrounds. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <circle cx="8" cy="8" r="8" fill="#28e0ff"/>
+  <path d="M4 4 L8 12.5 L12 4 M5.41 7 H10.59" fill="none" stroke="#04121c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

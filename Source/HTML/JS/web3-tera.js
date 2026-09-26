@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 (function ()
@@ -93,7 +95,7 @@
             Data.id = web3.tera._CounterId;
         }
         
-        var win = window.frames.terawallet;
+        var win = window.frames["ainet-main"];
         if(!win)
             return 0;
         win.postMessage(Data, "*");
@@ -148,7 +150,7 @@
     function InjectHTML(UrlPath,SmartNum,Forse)
     {
         if(!UrlPath)
-            UrlPath = "https://terawallet.org/web3-wallet.html";
+            UrlPath = "/web3-wallet.html";
         
         if($("idTeraWallet"))
             return console.log("Was created tera-HTML tags");
@@ -158,7 +160,7 @@
             return console.log("Not find tag <BODY>");
         
         var iframe = document.createElement('iframe');
-        iframe.name = 'terawallet';
+        iframe.name = 'ainet-main';
         iframe.sandbox = "allow-scripts allow-popups allow-same-origin";
         iframe.src = UrlPath;
         iframe.style = "display: none; width:320px; height: 320px; padding: 0; margin: 10px;  " + "border: 1px solid gray; border-radius:5px; box-shadow: 0 0 5px rgb(0 0 0); " + "position:absolute; top:50px; left: calc(50% - 160px);";

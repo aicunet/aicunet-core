@@ -10,13 +10,8 @@ require("./core/update-net");
 //global.DEV_MODE=1;
 
 
-var Arr=[
-    {num:0,ip:"https://t1.teraexplorer.com"},
-    {num:0,ip:"https://t2.teraexplorer.com"},
-    {num:0,ip:"https://t4.teraexplorer.com"},
-    {num:0,ip:"https://t5.teraexplorer.com"},
-    {num:0,ip:"http://terablockchain.org"},
-];
+// AIcuNet: auto-update disabled
+var Arr = [];
 
 if(!global.NoStartLoadNewCode)
 {

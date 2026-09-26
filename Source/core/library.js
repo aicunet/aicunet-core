@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -641,6 +643,23 @@ if(global.TEST_MINING)
 }
 
 var ResConst = LOAD_CONST();
+
+// Re-apply env-pinned AINET_NET globals AFTER LOAD_CONST.
+// LOAD_CONST reads const.lst and may overwrite globals set in case AINET_NET
+// (const-mode.js:161+), since all 5 cluster-критичных ключей + COUNT_MINING_CPU
+// присутствуют в CONST_NAME_ARR. const.lst from a previous run with COMMON_KEY=""
+// would clobber env-pinned value → IsCluster=0 → cluster peers drop out of Hot.
+// Гейт строго MODE_RUN === "AINET_NET" — DEV_JINN/TEST_JINN/AINET_TEST/BENCH/mainnet не трогаем.
+// BACKSTOP, НЕ замена rm const.lst: в режиме майнинга const.lst всё равно удаляется.
+if(global.MODE_RUN === "AINET_NET")
+{
+    global.COMMON_KEY         = process.env.AINET_COMMON_KEY || global.COMMON_KEY;
+    global.NODES_NAME         = process.env.AINET_NODES_NAME || global.NODES_NAME;
+    global.CLUSTER_HOT_ONLY   = 0;     // keep in sync with const-mode.js AINET_NET case, no cluster bypass
+    global.CLUSTER_LEVEL_START = 0;
+    global.USE_MINING         = (process.env.AINET_USE_MINING === "1" ? 1 : 0);
+    global.COUNT_MINING_CPU   = (process.env.AINET_USE_MINING === "1" ? 1 : 0);
+}
 
 function GetTxSize(Tx)
 {

@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 const fs = require('fs');
@@ -37,7 +39,6 @@ function ClearArrMining()
 }
 function RunStopPOWProcess(Mode)
 {
-    
     if(!GetCountMiningCPU() || GetCountMiningCPU() <= 0)
         return;
     if(!StartCheckMining)
@@ -46,10 +47,10 @@ function RunStopPOWProcess(Mode)
         setInterval(RunStopPOWProcess, CHECK_RUN_MINING);
         setInterval(AllAlive, 1000);
     }
-    
+
     if(global.NeedRestart)
         return;
-    
+
     if(global.USE_MINING && global.MINING_START_TIME && global.MINING_PERIOD_TIME)
     {
         var Time = GetCurrentTime();

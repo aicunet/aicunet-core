@@ -6,104 +6,31 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
 var fs = require("fs");
 
+// AIcuNet: UpdateCodeFiles disabled in fork
 global.UpdateCodeFiles = function (StartNum)
 {
-    var fname = GetDataPath("Update");
-    if(!fs.existsSync(fname))
-        return 0;
-    
-    var arr = fs.readdirSync(fname);
-    var arr2 = [];
-    for(var i = 0; i < arr.length; i++)
-    {
-        if(arr[i].substr(0, 7) === "wallet-")
-        {
-            arr2.push(parseInt(arr[i].substr(7)));
-        }
-    }
-    arr2.sort(function (a,b)
-    {
-        return a - b;
-    });
-    
-    for(var i = 0; i < arr2.length; i++)
-    {
-        var Num = arr2[i];
-        var Name = "wallet-" + Num + ".zip";
-        var Path = fname + "/" + Name;
-        
-        ToLog("Check file:" + Name);
-        
-        if(fs.existsSync(Path))
-        {
-            if(StartNum === Num)
-            {
-                ToLog("UnpackCodeFile:" + Name);
-                UnpackCodeFile(Path);
-                
-                if(StartNum % 2 === 0)
-                {
-                    global.RestartNode(1);
-                }
-                else
-                {
-                }
-                
-                return 1;
-            }
-            else
-            {
-                ToLog("Delete old file update:" + Name);
-                fs.unlinkSync(Path);
-            }
-        }
-    }
-    
+    // No-op: auto-update network logic removed in AIcuNet fork.
     return 0;
 }
 
+// AIcuNet: UnpackCodeFile disabled in fork
 global.UnpackCodeFile = function (fname,bLog)
 {
-    
-    var data = fs.readFileSync(fname);
-    var reader = ZIP.Reader(data);
-    
-    reader.forEach(function (entry)
-    {
-        var Name = entry.getName();
-        var Path = GetCodePath(Name);
-        
-        if(entry.isFile())
-        {
-            if(global.DEV_MODE)
-            {
-                ToLog("emulate unpack: " + Path);
-                return;
-            }
-            if(bLog)
-                ToLog(Path);
-            
-            var buf = entry.getData();
-            CheckCreateDir(Path, true, true);
-            
-            var file_handle = fs.openSync(Path, "w");
-            fs.writeSync(file_handle, buf, 0, buf.length);
-            fs.closeSync(file_handle);
-        }
-        else
-        {
-        }
-    });
-    reader.close();
+    // No-op: code-file unpacking disabled in AIcuNet fork.
+    return;
 }
 
 global.RestartNode = function RestartNode(bForce)
 {
+    // AIcuNet: RestartNode disabled in fork
+    if (true) { ToLog("RestartNode: no-op in AIcuNet fork"); return; }
     global.NeedRestart = 1;
     setTimeout(DoExit, 5000);
     

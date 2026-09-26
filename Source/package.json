@@ -1,20 +1,18 @@
 {
-  "name": "Tera",
-  "version": "1.0.0",
-  "description": "Tera wallet",
+  "name": "aicunet",
+  "version": "1.2.0",
+  "description": "AIcuNet node and wallet",
   "main": "run-nw.js",
-  "main2": "run-electron.js",
-  "repository": "https://gitlab.com/terafoundation/tera2",
+  "repository": "https://github.com/aicunet/aicunet-core",
   "keywords": [
+    "blockchain",
     "wallet",
-    "cryptowallet",
-    "quick",
-    "messenger",
-    "cryptocurrency",
-    "cryptomessenger"
+    "node",
+    "AIcuNet",
+    "AINET"
   ],
-  "author": "progr76@gmail.com",
-  "license": "MIT",
+  "author": "The AIcuNet developers",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "bintrees": "^1.0.2",
     "bitcore-lib": "^8.22.2",

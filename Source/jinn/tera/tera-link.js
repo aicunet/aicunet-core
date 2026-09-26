@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -108,8 +110,17 @@ function Init(Engine)
     };
     Engine.SetChildName = function (Child,NameArr)
     {
-        var Str = Engine.ValueFromEncrypt(Child, NameArr);
-        if(Str.substr(0, 8) === "CLUSTER:")
+        var Str = "";
+        try
+        {
+            Str = Engine.ValueFromEncrypt(Child, NameArr);
+        }
+        catch(e)
+        {
+            Str = "";
+        }
+
+        if(Str && Str.substr(0, 8) === "CLUSTER:")
         {
             Child.IsCluster = 1;
             Child.Name = Str.substr(8);

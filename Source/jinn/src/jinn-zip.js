@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 /**
@@ -63,7 +65,16 @@ function InitClass(Engine)
             DecodeZip.pipe(Child.WriterUnZip);
             DecodeZip.on('error', function (err)
             {
+                // ---- guard: раньше здесь была ТОЛЬКО запись в лог. ----
+                // Child.UseZip ставится в InitChild (jinn-connect-item.js:129) — ДО handshake,
+                // а jinn-net.js:77 гонит ЛЮБЫЕ входящие байты в Gunzip. Значит сканер,
+                // приславший plain HTTP на порт ноды, попадает прямо в декодер
+                // ("incorrect header check"). Стрим не уничтожался, соединение жило —
+                // лишняя DoS-поверхность + утечка нативного контекста на каждый пакет.
                 Child.ToError("DecodeZip packet=" + Child.ReceivePacketCount + " work=" + Child.WriterUnZip.WorkNum + "/" + Child.WorkNum + " " + err);
+                try{ DecodeZip.destroy(); }catch(e){}
+                delete Child.DecodeZip;
+                Engine.OnDeleteConnect(Child, "BadZipStream");   // не-протокольный пир — отбрасываем
             });
             Child.WriterUnZip.WorkNum = Child.WorkNum;
             Child.DecodeZip = DecodeZip;

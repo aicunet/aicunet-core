@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -649,14 +651,29 @@ function ChildName(Child)
 }
 function IsLocalIP(addr)
 {
+    // ---- note: было строковое сравнение префиксов — оно СЛОМАНО. ----
+    // ("100.64." >= "100.64." && "100.64." <= "100.127") == false, т.к. '6' > '1'
+    // => диапазон лексикографически ПУСТ и НИ ОДИН адрес CGNAT 100.64.0.0/10
+    //    не детектировался. Узел за двойным NAT счёл бы свой 100.x публичным
+    //    и раздал бы мёртвый адрес в GETNODES.
+    // Заодно "172.161.x.x" (публичный!) ложно попадал в диапазон 172.16-172.31.
+    // Сравниваем числами.
     if(global.LOCAL_RUN)
         return 0;
-    var addr7 = addr.substr(0, 7);
-    if(addr === "127.0.0.1" || addr7 === "192.168" || (addr7 >= "100.64." && addr7 <= "100.127") || (addr7 >= "172.16." && addr7 <= "172.31.") || addr.substr(0,
-    3) === "10.")
-        return 1;
-    else
+    if(typeof addr !== "string")
         return 0;
+    var m = addr.match(/^(\d{1,3})\.(\d{1,3})\./);
+    if(!m)
+        return 0;
+    var a = +m[1], b = +m[2];
+    if(a === 127) return 1;                        // loopback
+    if(a === 10) return 1;                         // 10/8
+    if(a === 192 && b === 168) return 1;           // 192.168/16
+    if(a === 172 && b >= 16 && b <= 31) return 1;  // 172.16/12
+    if(a === 100 && b >= 64 && b <= 127) return 1; // 100.64/10 — CGNAT (было сломано)
+    if(a === 169 && b === 254) return 1;           // link-local
+    if(a === 0) return 1;
+    return 0;
 }
 
 function inet_pton(a)

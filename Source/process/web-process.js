@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -301,6 +303,25 @@ if(!global.WebApi1)
 
 function DoCommandNew(request,response,Type,Path,Params)
 {
+    // ---- guard: CSRF-гейт на веб-кошельке (HTTP_HOSTING_PORT). ----
+    // Тот же вектор, что на 8880. Страницы 8080 обращаются только к 8080 (same-origin);
+    // OpenOwnWebWallet (wallet-full.js:1101) лишь открывает ссылку, кросс-вызовов нет.
+    var ReqOrigin = request.headers["origin"];
+    if(ReqOrigin)
+    {
+        var OwnPort = global.HTTP_HOSTING_PORT;
+        var OriginOK = ["http://127.0.0.1:" + OwnPort, "http://localhost:" + OwnPort,
+                        "http://[::1]:" + OwnPort];
+        if(OriginOK.indexOf(ReqOrigin) < 0)
+        {
+            ToLog("CSRF BLOCKED (hosting): Origin=" + ReqOrigin + " Path=" + Path, 0);
+            response.writeHead(403, {"Content-Type":"text/plain", "X-Content-Type-Options":"nosniff"});
+            response.end("Forbidden: cross-origin");
+            return;
+        }
+    }
+    // ---- /guard ----
+
     if(global.HTTP_START_PAGE === "WWW")
         return DoCommandWWW(request, response, Type, Path, Params);
 
@@ -327,7 +348,7 @@ function DoCommandNew(request,response,Type,Path,Params)
             APIv2 = 1;
             if(!global.USE_HARD_API_V2)
             {
-                response.writeHead(200, {'Content-Type':'text/plain', 'Access-Control-Allow-Origin':"*"});
+                response.writeHead(200, {'Content-Type':'text/plain'});   // ACAO:"*" снят — API ноды не должен читаться сторонним сайтом
                 response.end(JSON.stringify({result:0, text:"You must set const USE_HARD_API_V2:1"}));
                 return;
             }
@@ -359,7 +380,7 @@ function DoCommandNew(request,response,Type,Path,Params)
     {
         //console.log(Method,ArrPath);
 
-        response.writeHead(200, {'Content-Type':'text/plain', 'Access-Control-Allow-Origin':"*"});
+        response.writeHead(200, {'Content-Type':'text/plain'});   // ACAO:"*" снят — API ноды не должен читаться сторонним сайтом
         
         if(!global.USE_API_V1 && !APIv2)
         {

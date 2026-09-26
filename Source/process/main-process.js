@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 'use strict';
@@ -34,6 +36,7 @@ console.log("DATA DIR: " + global.DATA_PATH);
 console.log("PROGRAM DIR: " + global.CODE_PATH);
 
 require("../core/library");
+require("../core/ainet-guard");   // инвариант-гейт AINET. После LOAD_CONST, до всего остального.
 require("../core/crypto-library");
 require("../core/upnp.js");
 
@@ -142,6 +145,26 @@ require("../core/html-server");
 var JinnLib = require("../jinn/tera");
 require("../system");
 
+// === AINET multi-node bootstrap ===
+// AINET_SEEDS (or SEED_NODES) env var: "ip1:port,ip2:port,..." — first entry becomes NodeRoot.
+// Штатный seed-механизм JINN (jinn/src/jinn-connect.js:34-50) потребляет JINN_EXTERN.NodeRoot;
+// run-ainet*.js его не сетит → cold-start gap для multi-node сети.
+// Гард: AINET_TEST + AINET_NET — оба AINET-режима. AINET_BENCH и mainnet не затронуты.
+var SeedEnv = process.env.SEED_NODES || process.env.AINET_SEEDS;
+if((global.MODE_RUN === "AINET_TEST" || global.MODE_RUN === "AINET_NET") && SeedEnv)
+{
+    var firstSeed = SeedEnv.split(',')[0].trim();
+    var seedParts = firstSeed.split(':');
+    var seedIp = seedParts[0];
+    var seedPort = parseInt(seedParts[1] || "38000", 10);
+    global.JINN_EXTERN.NodeRoot = {IDArr: global.CalcIDArr(seedIp, seedPort), ip: seedIp, port: seedPort};
+    ToLog("SEED: AINET " + global.MODE_RUN + " NodeRoot = " + seedIp + ":" + seedPort);
+}
+else if(global.MODE_RUN === "AINET_TEST" || global.MODE_RUN === "AINET_NET")
+{
+    ToLog("SEED-WARN: " + global.MODE_RUN + " mode but AINET_SEEDS env is empty — the node has no seed to connect to");
+}
+
 require("./childs-run");
 
 
@@ -170,9 +193,12 @@ function RunServer()
 
 function StartJinn()
 {
+    // Defensive: re-set JINN_IP from env if available (it's the authoritative value when set)
+    if(process.env.JINN_IP)
+        global.JINN_IP = process.env.JINN_IP;
     if(global.AUTODETECT_IP)
         global.JINN_IP = "";
-    
+
     if(!global.JINN_IP)
         global.JINN_IP = "0.0.0.0";
     StartPortMapping(global.JINN_IP, global.JINN_PORT, function (ip)

@@ -1,0 +1,26 @@
+# Node
+Source/node_modules/
+Source/npm-debug.log*
+Source/yarn-debug.log*
+Source/yarn-error.log*
+Source/package-lock.json.bak
+
+# Node runtime data (created by run-jinn.js)
+DATA/
+DATA-*/
+DATA-*/DB/
+DATA-*/Update/
+DATA-*/WALLET/
+DATA-*/log*.log
+DATA-*/err.log
+*.log
+*.log-*
+
+# pm2 ecosystem file (contains node-specific settings and secrets)
+# generated locally on each node, never committed
+ecosystem.config.js
+
+# Update artifacts (should never be present, but defense in depth)
+wallet.zip
+Source/wallet.zip
+Source/lib/

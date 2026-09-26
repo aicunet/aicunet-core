@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -953,8 +955,8 @@ function SetArrLog(arr)
 }
 
 var DiagramArr = [{name:"MAX:ALL_NODES", text:"Number of public nodes", value:0, red:"#1d506b", MouseText:" nodes", CountNameX:10},
-    {name:"MAX:HASH_RATE_B", text:"HashRate, Tera hash/s", value:0, red:"#286b16", MathPow:2, MathDiv:1024 * 1024 * 1024 * 1024,
-    KPrecision:10, NoTextMax:1, MouseText:" T h/s", CountNameX:10}, ];
+    {name:"MAX:HASH_RATE_B", text:"HashRate, AINET PoW h/s", value:0, red:"#286b16", MathPow:2, MathDiv:1024 * 1024 * 1024 * 1024,
+    KPrecision:10, NoTextMax:1, MouseText:" A h/s", CountNameX:10}, ];
 
 function InitDiagram()
 {
@@ -1024,7 +1026,7 @@ function downloadKey(fieldID)
     var text = document.getElementById(fieldID).value;
     var blob = new Blob([text], {type:"text/plain"});
     var anchor = document.createElement("a");
-    anchor.download = "tera-key.txt";
+    anchor.download = "aicunet-key.txt";
     anchor.href = window.URL.createObjectURL(blob);
     anchor.target = "_blank";
     anchor.style.display = "none";
@@ -1651,68 +1653,68 @@ function OpenHelp()
     var Map = LangMap[$("idLang").value];
     var Link = Map["==HELP-LINK=="];
     if(!Link)
-        Link = "https://medium.com/@evkara777/tera-cryptocurrency-wallet-types-account-creation-97735abad783";
+        Link = "https://aicunet.com";
     OpenWindow(Link);
 }
 
 var LangMap = {};
 LangMap["ENG"] = {};
-LangMap["RUS"] = {"TERA WALLET":"TERA КОШЕЛЕК", "Generate key":"Сгенерировать ключ", "OK":"OK", "Cancel":"Отмена", "Edit":"Редактирование",
+LangMap["RUS"] = {"AINET WALLET":"AINET КОШЕЛЕК", "Generate key":"Сгенерировать ключ", "OK":"OK", "Cancel":"Отмена", "Edit":"Редактирование",
     "Save key":"Сохран.", "+ CREATE A NEW ACCOUNT":"+ СОЗДАТЬ НОВЫЙ СЧЕТ", "Create account":"Создать счет", "Send":"Отправить",
     "CONFIRM":"Подтвердить", "Accounts":"Счета", "Account(s)":"Счет(а,ов)", "Blocks and Tx":"Блоки и Транзакции", "Counters":"Показатели",
     "Open DApp":"Открыть", "Back":"Назад", "Delete":"Удалить", "Save to book":"Сохранить в книгу", "Choose":"Выбрать", "RECONNECT":"КОННЕКТ",
     "DApps":"DApps", "ID":"ИД", "Amount":"Величина", "Cur":"Вал", "Name":"Имя", "PubKey":"Пуб.ключ", "Operation":"Операция", "Smart":"Смарт",
     "Block Num":"Ном блока", "Num":"Ном", "Date":"Дата", "Data Hash":"Хеш данных", "PowHash":"Хеш сложности", "Block Hash":"Хеш блока",
-    "Bytes":"Байт", "Pow":"Сложн", "Miner":"Майнер", "(secret)":"(секрет)", "Show":"Показать", "TERA":"TERA", "Blockchain height:":"Высота блокчейна:",
+    "Bytes":"Байт", "Pow":"Сложн", "Miner":"Майнер", "(secret)":"(секрет)", "Show":"Показать", "AXNT":"AXNT", "Blockchain height:":"Высота блокчейна:",
     "Current create:":"Текущий блок:", "Protocol ver:":"Версия протокола:", "ID: $Item.Num":"ИД: $Item.Num", "Token generate":"Генерация токенов",
     "ACCOUNTS":"СЧЕТА", "SEND":"ОТПРАВИТЬ", "DAPPS":"ДАППС", "EXPLORER":"ПРОСМ", "ATTENTION: Before using the wallet, save the private key.":"ВНИМАНИЕ: Перед использованием кошелька сохраните приватный ключ",
     "Web-site":"Веб-сайт", "Bitcointalk":"Bitcointalk", "Twitter":"Твиттер", "Telegram":"Телеграм", "Discord":"Дискорд", "QQchat":"QQchat",
-    "Buy/sell/mine TERA":"Купить/продать/майнить", "+ CREATE NEW":"+ СОЗДАТЬ", "Confirm Transaction":"Подтверждение транзакции",
+    "+ CREATE NEW":"+ СОЗДАТЬ", "Confirm Transaction":"Подтверждение транзакции",
     "CREATE DAPPS":"СОЗДАТЬ", "Set pass":"Установить пароль", "Unlock":"Разблокировать", "Entrance to sub-wallet":"Войти в под-кошелек",
     "Public name":"Публичное имя", "Currency":"Валюта", "Pay to:":"Получатель:", "Amount:":"Сумма:", "Description:":"Описание:",
-    "Welcome to TERA Wallet":"Добро пожаловать в кошелек TERA", "Edit your wallet":"Редактирование вашего кошелька", "Key settings":"Задание ключей",
+    "Welcome to AINET Wallet":"Добро пожаловать в кошелек AINET", "Edit your wallet":"Редактирование вашего кошелька", "Key settings":"Задание ключей",
     "KEY SETTINGS":"КЛЮЧИ", "Create an account":"Создание счета", "Sending coins":"Отправка монет", "Decentralized applications (dApps)":"Децентрализованные приложения (DApps)",
     "Secure your wallet":"Безопасность вашего кошелька", "Wallet is secured":"Установлен пароль", "Total on page":"Всего", "Item.Name":"Item.Name",
     "You have no accounts yet":"У вас нет ни одного счета", "Wait 10-15 sec":"Ждите 10-15 сек", "Creating your account":"Идет создание вашего счета",
     "From:":"Отправитель:", "Set a password for protect entry":"Установите пароль для безопасности", "Enter password to unlock wallet":"Введите пароль для разблокировки кошелька",
     "From ID:":"Отправитель:", "Pay to ID:":"Получатель:", "Account":"Счет", "Owner":"Владелец", "Block num":"Ном блока", "Private key (secret)":"Приватный ключ (секретно)",
-    "Load key":"Загруз.", "Create your first account and start using TERA":"Создайте свой первый счет и начните использовать TERA",
+    "Load key":"Загруз.", "Create your first account and start using AINET":"Создайте свой первый счет и начните использовать AINET",
     "0 Accounts":"0 Счетов", "OWNER: {Item.Owner}":"Владелец: {Item.Owner}", "More info":"Инфо", "Public key":"Публичный ключ",
     "Enter number of dapp":"Введите номер Dapp", "Enter the dapps number that will be added to your account. Attention make sure that you trust this dapp, otherwise you may lose all funds in this account.":"Введите номер Dapp, который будет добавлен в ваш аккаунт. Внимание убедитесь, что Вы доверяете ему, в противном случае вы можете потерять все средства на этом счете.",
-    "Sending Tx":"Отправка транзакции", "Wallet ver:":"Версия:", "Tera Wallet Guide...":"Руководство по Tera Wallet...", "==HELP-LINK==":"https://medium.com/@evkara777/tera-%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B2%D0%B0%D0%BB%D1%8E%D1%82%D0%BD%D1%8B%D0%B9-%D0%BA%D0%BE%D1%88%D0%B5%D0%BB%D0%B5%D0%BA-%D0%B2%D0%B8%D0%B4%D1%8B-%D1%81%D0%BE%D0%B7%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5-%D1%81%D1%87%D0%B5%D1%82%D0%B0-6402531ecc11",
+    "Sending Tx":"Отправка транзакции", "Wallet ver:":"Версия:", "AINET Wallet Guide...":"Руководство по AINET Wallet...", "==HELP-LINK==":"https://aicunet.com",
 };
-LangMap["简体中文"] = {"TERA WALLET":"TERA 钱包", "Generate key":"生成私钥", "OK":"OK", "Cancel":"取消", "Edit":"编辑", "Save key":"保存私钥",
+LangMap["简体中文"] = {"AINET WALLET":"AINET 钱包", "Generate key":"生成私钥", "OK":"OK", "Cancel":"取消", "Edit":"编辑", "Save key":"保存私钥",
     "+ CREATE A NEW ACCOUNT":"+ 新建账号", "Create account":"创建账号", "Send":"发送", "SEND":"转账", "CONFIRM":"确认", "Accounts":"账号", "Account(s)":"账号",
     "Blocks and Tx":"区块和交易", "Counters":"状态统计", "Open DApp":"打开DApp", "Back":"返回", "Delete":"删除", "Save to book":"保存到地址本", "Choose":"选择",
     "RECONNECT":"重连", "DApps":"DApps", "ID":"ID", "Amount":"余额", "Cur":"币种", "Name":"名称", "PubKey":"公钥", "Operation":"操作次数", "Smart":"DApp",
     "Block Num":"区块编号", "Num":"编号", "Date":"日期", "Data Hash":"数据哈希", "PowHash":"Pow哈希", "Block Hash":"区块哈希", "Bytes":"字节", "Pow":"Pow",
-    "Miner":"矿工", "(secret)":"(机密)", "Show":"显示", "TERA":"TERA", "Blockchain height:":"区块高度:", "Current create:":"最近区块:", "Protocol ver:":"协议版本:",
+    "Miner":"矿工", "(secret)":"(机密)", "Show":"显示", "AXNT":"AXNT", "Blockchain height:":"区块高度:", "Current create:":"最近区块:", "Protocol ver:":"协议版本:",
     "Token generate":"生成代币", "ACCOUNTS":"账号", "DAPPS":"DAPPS", "EXPLORER":"浏览器", "ATTENTION: Before using the wallet, save the private key.":"注意: 使用钱包前，务必保存好私钥。",
-    "Web-site":"官网", "Bitcointalk":"创世贴", "Twitter":"推特", "Telegram":"电报", "Discord":"Discord", "QQchat":"QQ群", "Buy/sell/mine TERA":"TERA 交易/挖矿",
+    "Web-site":"官网", "Bitcointalk":"创世贴", "Twitter":"推特", "Telegram":"电报", "Discord":"Discord", "QQchat":"QQ群",
     "+ CREATE NEW":"+ 新建", "Confirm Transaction":"确认交易", "CREATE DAPPS":"创建DAPPS", "Set pass":"设置密码", "Unlock":"解锁", "Entrance to sub-wallet":"进入子钱包",
-    "Public name":"名称", "Currency":"币种", "Pay to:":"收款:", "Amount:":"金额:", "Description:":"描述:", "Welcome to TERA Wallet":"欢迎使用TERA钱包",
+    "Public name":"名称", "Currency":"币种", "Pay to:":"收款:", "Amount:":"金额:", "Description:":"描述:", "Welcome to AINET Wallet":"欢迎使用AINET钱包",
     "Edit your wallet":"编辑钱包", "Key settings":"设置私钥", "KEY SETTINGS":"设置私钥", "Create an account":"创建账号", "Sending coins":"转账",
     "Decentralized applications (dApps)":"去中心化应用 (DApps)", "Secure your wallet":"设置钱包密码", "Wallet is secured":"钱包密码已设置", "Total":"总计",
     "Item.Name":"Item.Name", "You have no accounts yet":"你还没有账号", "Wait 10-15 sec":"等待10-15秒", "Creating your account":"创建你的账号",
     "From:":"付款:", "Set a password for protect entry":"设置密码保护钱包", "Enter password to unlock wallet":"输入密码解锁钱包", "From ID:":"付款ID:",
     "Pay to ID:":"收款ID:", "Account":"账号", "Owner":"拥有者", "Block num":"区块编号", "Private key (secret)":"私钥 (机密)", "Load key":"载入私钥",
-    "Create your first account and start using TERA":"创建你的第一个账号，开启TERA之旅", "0 Accounts":"0 账号", "OWNER: {Item.Owner}":"拥有者: {Item.Owner}",
-    "More info":"详情", "Public key":"公钥", "Tera Wallet Guide...":"TERA钱包创建指南", "==HELP-LINK==":"https://terafoundation.org/files/Tera-Wallet-cn.pdf",
+    "Create your first account and start using AINET":"创建你的第一个账号，开启AINET之旅", "0 Accounts":"0 账号", "OWNER: {Item.Owner}":"拥有者: {Item.Owner}",
+    "More info":"详情", "Public key":"公钥", "AINET Wallet Guide...":"AINET钱包创建指南", "==HELP-LINK==":"https://aicunet.com",
 };
-LangMap["한글"] = {"TERA WALLET":"TERA 지갑", "Generate key":"개인 키 생성", "OK":"OK", "Cancel":"취소", "Edit":"편집", "Save key":"개인 키 저장",
+LangMap["한글"] = {"AINET WALLET":"AINET 지갑", "Generate key":"개인 키 생성", "OK":"OK", "Cancel":"취소", "Edit":"편집", "Save key":"개인 키 저장",
     "+ CREATE A NEW ACCOUNT":"+ 새 계정 만들기", "Create account":"계정 만들기", "Send":"발송", "CONFIRM":"확인", "Accounts":"계정", "Account(s)":"계정",
     "Blocks & Tx":"블록 & 교역 번호", "Counters":"컨디션 통계", "Open DApp":" DApp을 열기", "Back":"되돌아가기", "Delete":"삭제", "Save to book":"저장",
     "Choose":"선택", "RECONNECT":"다시 연결", "DApps":"DApps", "ID":"ID", "Amount":"잔금", "Cur":"화폐", "Name":"이름", "PubKey":"공공키", "Operation":"조작 횟수",
     "Smart":"DApp", "Block Num":"블록 번호", "Num":"번호", "Date":"날짜", "Data Hash":"데이터 하희", "PowHash":"Pow하희", "Block Hash":"블록 하희",
-    "Bytes":"바이트", "Pow":"Pow", "Miner":"바이트", "(secret)":"(비밀)", "Show":"쇼", "TERA":"TERA", "Blockchain height:":"블록높이:", "Current create:":"최근 블록:",
+    "Bytes":"바이트", "Pow":"Pow", "Miner":"바이트", "(secret)":"(비밀)", "Show":"쇼", "AXNT":"AXNT", "Blockchain height:":"블록높이:", "Current create:":"최근 블록:",
     "Protocol ver:":"프로토콜 버전:", "Token generate":"생성대폐", "ACCOUNTS":"계정", "SEND":"발송", "DAPPS":"DAPPS", "EXPLORER":"브라우저", "ATTENTION: Before using the wallet, save the private key.":"주의: 지갑을 사용하기 전에 반드시 개인 키를 저장해야 한다.",
-    "Web-site":"사이트", "Bitcointalk":"비트 화폐포럼", "Twitter":"트위터", "Telegram":"전보", "Discord":"Discord", "QQchat":"QQ ", "Buy/sell/mine TERA":"TERA거래 /채광",
+    "Web-site":"사이트", "Bitcointalk":"비트 화폐포럼", "Twitter":"트위터", "Telegram":"전보", "Discord":"Discord", "QQchat":"QQ ",
     "+ CREATE NEW":"+신건", "Confirm Transaction":"거래 확인", "CREATE DAPPS":" DAPPS만들기", "Set pass":"비밀번호 설정", "Unlock":"잠금 풀기", "Entrance to sub-wallet":"부속 지갑 들어가기",
-    "Public name":"이름", "Currency":"화폐", "Pay to:":"지불:", "Amount:":"수량:", "Description:":"묘사:", "Welcome to TERA Wallet":"TERA 지갑을 환영합니다",
+    "Public name":"이름", "Currency":"화폐", "Pay to:":"지불:", "Amount:":"수량:", "Description:":"묘사:", "Welcome to AINET Wallet":"AINET 지갑을 환영합니다",
     "Edit your wallet":"지갑 편집", "Key settings":"개인 키 설정", "KEY SETTINGS":"개인 키 설정", "Create an account":"계정 만들기", "Sending coins":"동전 보내기",
     "Decentralized applications (dApps)":"분산식 응용(DApps)", "Secure your wallet":"지갑 비밀번호 설정", "Wallet is secured":"지갑 비밀번호가 설정되었습니다. ",
     "Total on page":"총계", "Item.Name":"Item.Name", "You have no accounts yet":"당신 아직 계정이 없다", "Wait 10-15 sec":" 10 -15초 기다리기", "Creating your account":"계정 만들기",
     "From:":"부터:", "\n Item.Description\n ":"\n Item.Description\n ", "Set a password for protect entry":"접근 비밀번호 설정", "Enter password to unlock wallet":"비밀번호 잠금 풀기",
     "From ID:":" ID부터:", "Pay to ID:":"ID 에게 지불:", "Account":"계정", "Owner":"소유자", "Block num":"블록 번호", "Private key (secret)":"개인 키",
-    "Load key":"개인 키 불러오기", "Create your first account and start using TERA":"첫 번째 계정 만들기, TERA 의 여정을 열고", "0 Accounts":"0계정",
+    "Load key":"개인 키 불러오기", "Create your first account and start using AINET":"첫 번째 계정 만들기, AINET 의 여정을 열고", "0 Accounts":"0계정",
     "OWNER: {Item.Owner}":"소유자: {Item.Owner}", "More info":"자세", "Public key":"공공키", };

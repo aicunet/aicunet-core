@@ -6,14 +6,17 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 "use strict";
 
 const fs = require('fs');
 
-global.RunOnUpdate = RunOnUpdate;
-function RunOnUpdate()
+// AIcuNet: RunOnUpdate disabled in fork
+global.RunOnUpdate = function RunOnUpdate() { return; };
+function RunOnUpdate_unused_disabled()
 {
     var fname = GetDataPath("DB/update.lst");
     var UpdateInfo = LoadParams(fname, {UPDATE_NUM_COMPLETE:2000, JINN_MODE_VER2:1});
@@ -99,7 +102,7 @@ function DeleteOldDBFiles()
     }, 20 * 1000);
 }
 
-function SendRewrteAllTx()
+function SendRewrteAllTx_disabled() // AIcuNet: disabled
 {
     ToLog("---------- UPD: Prepare RewriteAllTransactions");
     setTimeout(function ()
@@ -109,7 +112,7 @@ function SendRewrteAllTx()
     }, 30 * 1000);
 }
 
-function SendRewrteTx(StartNum)
+function SendRewrteTx_disabled(StartNum) // AIcuNet: disabled
 {
     setTimeout(function ()
     {
@@ -176,7 +179,7 @@ function CheckActDB(Name)
     }
 }
 
-function UpdateSmartDB()
+function UpdateSmartDB_disabled() // AIcuNet: disabled
 {
     console.log("********************* Converting Smart DB *********************");
 

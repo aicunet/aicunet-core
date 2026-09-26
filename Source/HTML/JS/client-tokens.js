@@ -38,7 +38,9 @@ async function InitMapCurrency()
     var AccCoinList = 0;
 
 
-    RegCurrency(0, window.SHARD_NAME, "./PIC/T.svg", 1);
+    // Native currency display ticker: "AXNT" (Axinit, ∀ U+2200).
+    // Consensus SHARD_NAME is "AINET" (see const-mode.js); the display ticker is hardcoded as AXNT.
+    RegCurrency(0, "AXNT", "./PIC/AXNT.svg", 1);
 
     if(window.NETWORK_ID === "MAIN-JINN.TERA")
     {

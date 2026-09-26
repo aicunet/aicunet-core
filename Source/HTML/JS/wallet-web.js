@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -18,20 +20,14 @@ var TIME_LENGTH_CONNECT_ALL = 2 * 1000;
 var StartTimeConnecting = 0;
 var ConnectedCount = 0;
 var NETWORK_NAME = "MAIN-JINN";
-var SHARD_NAME = "TERA";
+// AIcuNet: lite-wallet default SHARD_NAME = "AINET".
+// On live node this is overwritten by Data.SHARD_NAME from server response (see wallet-web.js CurNetworkID).
+var SHARD_NAME = "AINET";
 var NETWORK_ID = NETWORK_NAME + "." + SHARD_NAME;
 var SystemOnly;
 var ServerMap = {};
 var ServerMainMap = {
     "127.0.0.1":{"ip":"127.0.0.1", "port":80, "Name":"LOCAL"},
-    "terawallet.org":{"ip":"terawallet.org", "port":443,"Name":"terawallet", "System":1},
-    "teraexplorer.org":{"ip":"teraexplorer.org", "port":443, "Name":"teraexplorer", "System":1},
-    "t2.teraexplorer.com":{"ip":"t2.teraexplorer.com", "port":443, "Name":"t2.teraexplorer.com", "System":1},
-    "t4.teraexplorer.com":{"ip":"t4.teraexplorer.com", "port":443, "Name":"t4.teraexplorer.com", "System":1},
-    "t5.teraexplorer.com":{"ip":"t5.teraexplorer.com", "port":443, "Name":"t5.teraexplorer.com",  "System":1},
-
-    "dappsgate.com":{"ip":"dappsgate.com", "port":80, "Name":"SUPPORT2", "System":1},
-    "t1.teraexplorer.com":{"ip":"t1.teraexplorer.com", "port":80, "Name":"t1.teraexplorer.com", "System":1},
 };
 
 var ServerTestMap = {"127.0.0.1":{"ip":"127.0.0.1", "port":80, "Name":"LOCAL"}, "dappsgate.com":{"ip":"dappsgate.com", "port":88,

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AIcuNet network mark -->
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 100 100">
+  <g fill="none" stroke="#28e0ff" stroke-linejoin="miter" stroke-linecap="butt">
+    <path stroke-width="3.2" d="M6 6 H94 V94 H6 Z"/>
+    <path stroke-width="2.8" d="M50 12.5 L87.5 50 L50 87.5 L12.5 50 Z"/>
+    <path stroke-width="2.4" d="M11.5 11.5 L11.5 43.5 L43.5 11.5 Z M88.5 11.5 L88.5 43.5 L56.5 11.5 Z M88.5 88.5 L88.5 56.5 L56.5 88.5 Z M11.5 88.5 L11.5 56.5 L43.5 88.5 Z"/>
+    <path stroke-width="2.2" d="M50 12.5 V87.5 M12.5 50 H87.5"/>
+    <path stroke-width="1.8" d="M50 50 L11.5 11.5 M50 50 L88.5 11.5 M50 50 L88.5 88.5 M50 50 L11.5 88.5"/>
+  </g>
+</svg>

@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 function SavePrivateKey()
@@ -30,12 +32,23 @@ function SavePrivateKey()
         if(Data && Data.result === 1)
         {
             SetVisibleEditKeys(0);
+
+            // сравниваем со СТАРЫМ значением до сброса кэша.
+            var WasPriv = PrivKeyStr;
+            var WasPub  = PubKeyStr;
+
+            // ключ сменился — локальная копия протухла. Сбрасываем;
+            // SetConfigData на следующем опросе сам вызовет LoadPrivateKey().
+            PrivKeyStr = "";
+            if(window.sessionStorage)
+                sessionStorage[WALLET_KEY_NAME] = "";
+
             UpdatesData();
-            
-            if(Str.length === 64 && PrivKeyStr !== Str)
+
+            if(Str.length === 64 && WasPriv !== Str)
                 SetStatus("Private key changed");
             else
-                if(Str.length === 66 && PubKeyStr !== Str)
+                if(Str.length === 66 && WasPub !== Str)
                     SetStatus("Public key changed");
         }
     });

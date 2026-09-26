@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -86,6 +88,8 @@ function InitClass(Engine)
         
         Engine.SetChildRndHash(Child, Data.RndHash);
         Engine.SetChildName(Child, Data.NameArr);
+        // Propagate cluster flag to AddrItem (used by DoConnectHotLevels gate)
+        if(Child.AddrItem) Child.AddrItem.IsCluster = Child.IsCluster;
         if(!Engine.CanShardConnect(Child, Data.Shard))
         {
             StrError = "ERROR SHARD_NAME=" + Data.Shard;
@@ -120,10 +124,12 @@ function InitClass(Engine)
     {
         Child.RndHash = RndHash;
     };
-    Engine.SetChildName = function (Child,NameArr)
-    {
-        Child.IsCluster = 0;
-    };
+    // SetChildName is defined in Source/jinn/tera/tera-link.js:109-124 (the proper
+    // CLUSTER: prefix decoder using ArrCommonSecret for trust). The previous dummy
+    // override here unconditionally set IsCluster=0, shadowing the designed
+    // trust path. Init order: tera/index.js:98 calls tera-link.Init(Engine) BEFORE
+    // require("../src") loads this file, so removing the dummy lets the proper
+    // decoder survive.
     
     Engine.OnHandShakeReturn = function (Child,Data)
     {

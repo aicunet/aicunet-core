@@ -18,6 +18,7 @@ global.CONST_NAME_ARR = ["IP_VERSION", "JINN_IP", "JINN_PORT", "AUTODETECT_IP", 
     "HTTP_HOSTING_PROCESS",
 
     "USE_MINING", "USE_MINING_SHARDS", "MINING_ACCOUNT", "MINING_START_TIME", "MINING_PERIOD_TIME",
+    "EMISSION_YEAR_RATE", "BLOCKS_PER_YEAR", "AINET_BLOCK_REWARD",
     "POW_MAX_PERCENT", "COUNT_MINING_CPU", "SIZE_MINING_MEMORY", "POW_RUN_COUNT", "USE_AUTO_UPDATE", "JINN_MAX_MEMORY_USE", "RESTART_PERIOD_SEC",
     "WATCHDOG_DEV", "NOT_RUN", "DELTA_CURRENT_TIME", "USE_EDIT_ACCOUNT","USE_BLOCK_SEND_TX","ADD_EXTRA_SLOTS"];
 
@@ -56,7 +57,7 @@ global.UPDATE_CODE_SHARDING = 0;
 
 global.NETWORK = "NONE";
 global.SHARD_NAME = "NONE";
-global.START_NETWORK_DATE = 0;
+global.START_NETWORK_DATE = global.START_NETWORK_DATE || 0;
 global.CONSENSUS_PERIOD_TIME = 3000;
 
 global.SHARD_PARAMS = {};
@@ -74,6 +75,22 @@ global.NEW_FORMULA_START = 1;
 global.NEW_FORMULA_KTERA = 3;
 global.NEW_FORMULA_TARGET1 = 0;
 global.NEW_FORMULA_TARGET2 = 1;
+// Legacy emission parameters
+// NOTE: в текущей версии НЕ используются для расчёта reward в DoCoinBaseTR —
+// награда фиксирована AINET_BLOCK_REWARD × M_boot. Оставлены для обратной совместимости
+// констант.
+global.EMISSION_YEAR_RATE = 0.08;          // share of remaining pool per year (legacy; not used for reward)
+global.BLOCKS_PER_YEAR = 10512000;         // derived from CONSENSUS_PERIOD_TIME=3000, менять только синхронно (legacy; not used for reward)
+// Фиксированная награда AXNT/блок (× M_boot) — см. system/accounts.js DoCoinBaseTR.
+// Чеканка идёт из keyless-пула acc 0 (GenesisAccountCreate).
+global.AINET_BLOCK_REWARD = 3.3;
+// Bootstrap-множитель M_boot
+//   M_boot = clamp(0.1, 1, Block.Power / POWER_TARGET)
+// POWER_TARGET = целевое число бит сложности для "взрослой" сети.
+// Калибровка: AINET_BENCH. 1 узел = ~1-2 Power (TestSignLib 4.3 KH/s),
+// 100 узлов × 4.3 KH/s × 3s = ~20 Power. Стартуем с 22, уточнять при росте сети.
+// Диапазон: 22–26.
+global.POWER_TARGET = 22;
 global.NEW_SIGN_TIME = 0;
 global.START_BAD_ACCOUNT_CONTROL = 0;
 global.BLOCKNUM_TICKET_ALGO = 0;
@@ -185,7 +202,7 @@ global.BLOCK_GENESIS_COUNT = BLOCK_PROCESSING_LENGTH2;
 
 
 global.MAX_TRANSACTION_COUNT = 2000;
-global.TOTAL_SUPPLY_TERA = 1e9;
+global.TOTAL_SUPPLY_TERA = 1e12;
 
 if(!global.MAX_ACTS_LENGTH)
     global.MAX_ACTS_LENGTH = 10 * 1000 * 1000;
@@ -258,7 +275,9 @@ if(global.HTTP_IP_CONNECT === undefined)
 
 
 if(global.USE_AUTO_UPDATE === undefined)
-    global.USE_AUTO_UPDATE = 1;
+    global.USE_AUTO_UPDATE = 0; // AIcuNet: default off (fork)
+if(global.USE_UPNP === undefined)
+    global.USE_UPNP = 0; // AIcuNet: default off (fork)
 if(global.USE_PARAM_JS === undefined)
     global.USE_PARAM_JS = 1;
 

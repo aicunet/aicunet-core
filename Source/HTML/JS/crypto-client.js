@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 var MAX_SUPER_VALUE_POW = (1 << 30) * 2;
@@ -299,9 +301,10 @@ function ComputeSecret(Account,PubKey,SmartNum,F)
     }
     else
     {
-        GetData("GetWalletInfo", {Account:Account}, function (Data)
+        // приватный ключ отдаётся только по явному флагу WithPrivateKey.
+        GetData("GetWalletInfo", {Account:Account, WithPrivateKey:1}, function (Data)
         {
-            if(!Data || !Data.result)
+            if(!Data || !Data.result || !Data.PrivateKey)
                 return;
             ComputeSecretWithCheck(PubKey, Data.PrivateKey, SmartNum, F);
         });

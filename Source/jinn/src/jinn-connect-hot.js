@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -194,16 +196,21 @@ function InitClass(Engine)
     
     Engine.CanSetHot = function (Child)
     {
-        
+
         if(global.CLUSTER_HOT_ONLY && !Child.Name)
             return  - 7;
         if(!global.CLUSTER_HOT_ONLY && Child.Level < global.CLUSTER_LEVEL_START && Child.Name)
             return  - 6;
-        
+
         if(!Child.TestExchangeTime)
             return  - 5;
-        
-        if(Engine.IsStartingTime && Child.TestExchangeTime !== global.BEST_TEST_TIME)
+
+        // Cluster trust bypass for the IsStartingTime 20s window ONLY.
+        // Speed-test (-5) is still enforced above; CheckHotItem/-2 anti-ban/
+        // -3 level-slot uniqueness are still enforced below. Cluster peer proof
+        // comes from COMMON_KEY handshake (Child.IsCluster=1 set by tera-link
+        // SetChildName via NameArr decode — see jinn-connect-handshake.js).
+        if(!Child.IsCluster && Engine.IsStartingTime && Child.TestExchangeTime !== global.BEST_TEST_TIME)
             return  - 4;
         
         if(!Engine.CheckHotItem(Child))
@@ -410,14 +417,22 @@ function InitClass(Engine)
                     
                     if(!Item.TestExchangeTime)
                     {
-                        Child.ToLogNet("Cannt Add to Hot Item.TestExchangeTime=" + Item.TestExchangeTime);
-                        continue;
+                        // Cluster trust bypass — Item.IsCluster is set
+                        // in jinn-connect-handshake.js SetChildName propagation.
+                        if(!Item.IsCluster)
+                        {
+                            Child.ToLogNet("Cannt Add to Hot Item.TestExchangeTime=" + Item.TestExchangeTime);
+                            continue;
+                        }
                     }
-                    
+
                     if(Engine.IsStartingTime && Item.TestExchangeTime !== global.BEST_TEST_TIME)
                     {
-                        Child.ToLogNet("Cannt Add to Hot IsStartingTime=" + Engine.IsStartingTime + " Item.TestExchangeTime=" + Item.TestExchangeTime);
-                        continue;
+                        if(!Item.IsCluster)
+                        {
+                            Child.ToLogNet("Cannt Add to Hot IsStartingTime=" + Engine.IsStartingTime + " Item.TestExchangeTime=" + Item.TestExchangeTime);
+                            continue;
+                        }
                     }
                     
                     if(!CanTime(Item, "SendHotConnect", 1000, 1.5))

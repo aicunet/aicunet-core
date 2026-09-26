@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 'use strict';
@@ -24,7 +26,7 @@ function SendTestCoin(FromID,ToID,Sum,Count,TimeRepeat,bClear,Mode)
 
 function SendTestCoinInner(FromID,ToID,Sum,Count,Mode)
 {
-    var PrivHex = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    var PrivHex = "<YOUR_PRIV_KEY_HEX>";
     if(WALLET && WALLET.WalletOpen !== false)
     {
         PrivHex = WALLET.KeyPair.getPrivateKey('hex');

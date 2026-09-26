@@ -107,8 +107,10 @@ function ReadBalanceArr(Data)
     }
     else
     {
-        Token="TERA";
-        Value.IMG=GetURLPath("/PIC/Tera.svg");
+        // Native currency ticker: "AXNT" (Axinit, ∀ U+2200).
+        Token="AXNT";
+        // Network logo used as the placeholder token image.
+        Value.IMG=GetURLPath("/PIC/AICULogo.svg");
         IconBlockNum=undefined;
         IconTrNum=undefined;
     }

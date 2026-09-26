@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<!--
+  AIcuNet Wallet — интерфейс кошелька.
+  Offline-safe: НЕТ внешних запросов (нет CDN, нет @import, нет <link>, нет http/https).
+  Единственная зависимость — ЛОКАЛЬНАЯ библиотека ./JS/three.min.js (кладёт разработчик) для 3D-гема.
+  Пустые состояния по умолчанию — нули/прочерки.
+  Нейминг: AIcuNet · Axinit / AXNT / ∀ · CuJoule (CuJ) · CuTOPS · AI Commons.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIcuNet Wallet</title>
+<style>
+  /* ШРИФТЫ: только системный fallback. Бренд-шрифты используются, ЕСЛИ установлены локально.
+     Никаких @import/@font-face с URL → ноль сетевых запросов. */
+  :root{
+    --font-display:'Orbitron','Bahnschrift','Segoe UI Semibold','Arial Narrow',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code','Consolas','Roboto Mono',monospace;
+    --font-sans:'Space Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+    --bg:#070b14;--panel2:#111c33;--line:rgba(255,255,255,.08);
+    --txt:#eaf2ff;--mut:#8aa0c6;--acc:#28e0ff;--acc2:#3a7bff;--energy:#ffb54a;--good:#5ff0b0;
+    --glow:rgba(40,224,255,.30);
+    --glass:linear-gradient(160deg,rgba(46,72,116,.30),rgba(12,20,38,.46));
+    --glass-br:1px solid rgba(150,205,255,.15);
+    --glass-sh:0 10px 34px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.15),inset 0 0 30px rgba(40,224,255,.05);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font-sans);background:#05070d;color:var(--txt);min-height:100vh;
+    display:flex;align-items:center;justify-content:center;padding:18px;position:relative;overflow-x:hidden}
+  a,button,select{cursor:pointer;font-family:inherit}
+
+  /* ── ФОН: сеть нод (инлайн SVG + CSS), периодически соединяется ── */
+  .netbg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.42;transition:opacity .6s,filter .6s}
+  .netbg .lnk{stroke:var(--acc);stroke-width:1;opacity:0;transition:opacity 1.6s ease;animation:twinkle 3.6s ease-in-out infinite}
+  .netbg .lnk.on{opacity:1}
+  .netbg .node{fill:#8cf2ff;opacity:0;transition:opacity 1.6s ease;animation:nodepulse 3s ease-in-out infinite}
+  .netbg .node.on{opacity:1}
+  body.offline .netbg{opacity:.12;filter:grayscale(.55) brightness(.7)}
+  .aurora{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(60% 50% at 80% 4%,var(--glow),transparent 60%),
+               radial-gradient(55% 45% at 10% 92%,color-mix(in srgb,var(--acc2) 20%,transparent),transparent 60%);
+    animation:drift 26s ease-in-out infinite}
+  @keyframes twinkle{0%,100%{stroke-opacity:.06}50%{stroke-opacity:.45}}
+  @keyframes nodepulse{0%,100%{fill-opacity:.28}50%{fill-opacity:.8}}
+  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-16px,12px) scale(1.04)}}
+
+  /* ── КАРТА-КОНТЕЙНЕР (mobile-first, центрируется на десктопе) ── */
+  .app{position:relative;z-index:2;width:100%;max-width:460px;border-radius:26px;padding:16px 16px 14px;
+    background:var(--glass);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+    border:var(--glass-br);box-shadow:0 30px 90px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.14),0 0 70px rgba(40,224,255,.06)}
+
+  /* ── ХЕДЕР ── */
+  .hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo .mark{position:relative;width:42px;height:42px;border-radius:12px;background:rgba(13,20,36,.6);display:grid;place-items:center;
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 30%,var(--line)),0 0 24px color-mix(in srgb,var(--acc) 45%,transparent)}
+  .logo .mark::after{content:"";position:absolute;inset:-5px;border-radius:15px;z-index:-1;
+    background:radial-gradient(circle,var(--glow),transparent 68%);opacity:.5;animation:glowpulse 4.5s ease-in-out infinite}
+  .logo b{font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:1.1px}
+  .logo b span{color:var(--acc)}
+  .hdr .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .langbar{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .langbtn{background:transparent;border:none;color:var(--mut);font-size:11px;font-weight:700;padding:8px 10px;transition:.16s}
+  .langbtn.on{background:linear-gradient(120deg,var(--acc),var(--acc2));color:#04121c}
+  .langbtn:not(.on):hover{color:var(--txt);background:rgba(255,255,255,.05)}
+  .cog{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);color:var(--mut);display:grid;place-items:center;transition:.16s;background:transparent}
+  .cog:hover{color:var(--txt);border-color:color-mix(in srgb,var(--acc) 45%,transparent);box-shadow:0 0 14px var(--glow),inset 0 0 14px color-mix(in srgb,var(--acc) 10%,transparent)}
+  .cog svg{width:19px;height:19px}
+
+  nav{display:flex;gap:4px;margin-bottom:12px}
+  nav a{flex:1;text-align:center;font-size:11px;letter-spacing:.6px;color:var(--mut);padding:10px 4px;border-radius:9px;
+    text-decoration:none;font-weight:600;position:relative;transition:.16s}
+  nav a:hover{color:var(--txt);background:rgba(255,255,255,.05)}
+  nav a.on{color:var(--txt)}
+  nav a.on::after{content:"";position:absolute;left:24%;right:24%;bottom:2px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 0 10px var(--acc)}
+
+  /* ── КОЛОНКИ КОНТЕНТА ──
+     Две независимые колонки (.col.left / .col.right).
+     MOBILE: обе колонки складываются в одну вертикаль → порядок карточек сохранён:
+     balance → actions → commons → stats → accounts */
+  .content{display:flex;flex-direction:column;gap:12px}
+  .col{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+  .glass{position:relative;overflow:hidden;border-radius:18px;background:var(--glass);
+    backdrop-filter:blur(12px) saturate(150%);-webkit-backdrop-filter:blur(12px) saturate(150%);
+    border:var(--glass-br);box-shadow:var(--glass-sh)}
+  .glass::before{content:"";position:absolute;left:0;right:0;top:0;height:40%;pointer-events:none;z-index:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.09),transparent);border-radius:inherit}
+  .glass>*{position:relative;z-index:1}
+  /* блик по карточке баланса */
+  .balance::after{content:"";position:absolute;inset:-40% -12%;pointer-events:none;z-index:0;
+    background:linear-gradient(115deg,transparent 42%,rgba(160,222,255,.12) 50%,transparent 58%);
+    transform:translateX(-60%);opacity:0;animation:sheen 24s ease-in-out infinite}
+  @keyframes sheen{0%{transform:translateX(-60%);opacity:0}2%{opacity:1}9%{transform:translateX(60%);opacity:1}
+    11%{transform:translateX(60%);opacity:0}100%{transform:translateX(60%);opacity:0}}
+
+  /* «скоро» бейдж для плейсхолдеров */
+  .soon{display:inline-block;font-family:var(--font-mono);font-size:9px;letter-spacing:.4px;color:#04121c;
+    background:var(--mut);padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle}
+
+  /* ── БАЛАНС ── */
+  .balance{padding:20px 18px}
+  #crystal{position:absolute;right:12px;top:12px;width:96px;height:116px;z-index:1;pointer-events:none;
+    animation:float 5.5s ease-in-out infinite;will-change:transform}
+  .gemlight{position:absolute;right:10px;top:10px;width:110px;height:110px;border-radius:50%;pointer-events:none;z-index:0;
+    background:radial-gradient(circle,var(--glow),transparent 66%);filter:blur(6px);opacity:.45;animation:gemlight 6s ease-in-out infinite}
+  .balance .lbl{font-size:11px;letter-spacing:1.4px;color:var(--mut);text-transform:uppercase}
+  .balance .amt{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:32px;font-weight:600;
+    margin-top:8px;display:flex;align-items:baseline;gap:8px;text-shadow:0 0 16px rgba(40,224,255,.3)}
+  .balance .amt .sign{font-size:28px;background:linear-gradient(90deg,var(--acc),#8cf2ff,var(--acc));
+    background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    color:transparent;animation:shimmer 8.5s ease-in-out infinite}
+  @keyframes shimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+  .balance .amt .tk{font-size:12px;color:var(--mut);align-self:flex-start;margin-top:5px}
+  .balance .name{margin-top:6px;font-size:13px;font-weight:600}
+  .balance .sub{margin-top:2px;font-size:11.5px;color:var(--mut);max-width:220px}
+
+  /* ── КНОПКИ ДЕЙСТВИЙ (чистые SVG-контуры) ── */
+  .actions{display:flex;gap:9px}
+  .actions button{flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--txt);padding:12px 4px;
+    border-radius:14px;font-size:11px;font-weight:700;letter-spacing:.4px;display:flex;flex-direction:column;
+    align-items:center;gap:8px;transition:.16s}
+  .actions button i{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#e2fbff;
+    background:linear-gradient(160deg,color-mix(in srgb,var(--acc) 26%,transparent),color-mix(in srgb,var(--acc) 7%,transparent));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 0 0 1px color-mix(in srgb,var(--acc) 34%,transparent),0 4px 10px rgba(0,0,0,.38);transition:.16s}
+  .actions button i svg{width:21px;height:21px;display:block;filter:drop-shadow(0 0 5px var(--glow))}
+  .actions button:hover{border-color:color-mix(in srgb,var(--acc) 55%,transparent);
+    box-shadow:0 0 20px var(--glow),inset 0 0 22px color-mix(in srgb,var(--acc) 12%,transparent);transform:translateY(-2px)}
+  .actions button:hover i{background:linear-gradient(160deg,color-mix(in srgb,var(--acc) 36%,transparent),color-mix(in srgb,var(--acc) 12%,transparent));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 0 0 1px var(--acc),0 5px 12px rgba(0,0,0,.42),0 0 12px var(--glow)}
+  /* майнинг активен → куб светится и едва мигает (граней кнопки не трогаем) */
+  #btnMine.mining i{box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 0 0 1px color-mix(in srgb,var(--acc) 42%,transparent),
+    0 4px 10px rgba(0,0,0,.38),0 0 12px var(--glow);animation:minecube 3.8s ease-in-out infinite}
+  body.offline #btnMine.mining i{animation:none;filter:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 0 0 1px color-mix(in srgb,var(--acc) 34%,transparent),0 4px 10px rgba(0,0,0,.38)}
+  @keyframes minecube{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
+
+  /* ── AI COMMONS (плейсхолдер) ── */
+  .commons{padding:14px 16px;background:linear-gradient(160deg,rgba(38,120,90,.22),rgba(12,26,22,.44));border-color:rgba(95,240,176,.2)}
+  .commons .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .commons .top .l{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600}
+  .commons .top .free{font-family:var(--font-mono);font-size:11px;color:var(--good)}
+  .bar{height:7px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar>i{display:block;height:100%;width:0%;border-radius:5px;background:linear-gradient(90deg,var(--good),#37c9ff);box-shadow:0 0 12px rgba(95,240,176,.4)}
+  .commons .rowb{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+  .commons .hint{font-size:10.5px;color:var(--mut)}
+  .commons .ask{border:1px solid color-mix(in srgb,var(--good) 45%,transparent);background:color-mix(in srgb,var(--good) 12%,transparent);
+    color:var(--good);font-size:11px;font-weight:700;padding:7px 14px;border-radius:10px;transition:.16s}
+  .commons .ask:hover{background:color-mix(in srgb,var(--good) 24%,transparent);
+    box-shadow:0 0 16px rgba(95,240,176,.4),inset 0 0 16px color-mix(in srgb,var(--good) 16%,transparent);transform:translateY(-1px)}
+
+  /* ── СТАТ-БЛОКИ CuJoule / CuTOPS (плейсхолдеры) ── */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:14px 15px}
+  .stat .top{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--mut);font-weight:600}
+  .stat .top i{width:22px;height:22px;border-radius:7px;display:grid;place-items:center}
+  .stat .top i svg{width:13px;height:13px}
+  .stat.j .top i{background:color-mix(in srgb,var(--energy) 16%,transparent);color:var(--energy);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--energy) 32%,transparent)}
+  .stat.t .top i{background:color-mix(in srgb,var(--acc2) 16%,transparent);color:var(--acc2);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc2) 32%,transparent)}
+  .stat .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;margin-top:8px}
+  .stat.j .v{color:var(--energy);text-shadow:0 0 14px rgba(255,181,74,.35)}
+  .stat.t .v{color:#bcd2ff;text-shadow:0 0 14px rgba(58,123,255,.4)}
+  .stat .v small{font-size:12px;color:var(--mut)}
+  .stat .cap{font-size:10px;color:var(--mut);margin-top:3px}
+
+  /* ── СЧЕТА ── */
+  .accts-head{display:flex;align-items:center;gap:8px;margin:2px 2px 8px}
+  .accts-head h3{font-size:12px;letter-spacing:.6px;color:var(--mut);font-weight:600;text-transform:uppercase}
+  .accts-head .cnt{font-family:var(--font-mono);font-size:11px;color:var(--acc);
+    background:color-mix(in srgb,var(--acc) 12%,transparent);padding:1px 8px;border-radius:6px}
+  /* [UX] блок счетов = ФИКСИРОВАННОЕ окно (~5 карточек). Счета копятся внутри; больше 5 уходят вниз —
+     смотреть колёсиком или перетаскиванием полоски прокрутки. Без «развернуть», просто скролл. */
+  .acct-list{display:flex;flex-direction:column;gap:8px;max-height:250px;overflow-y:auto;overflow-x:hidden;padding-right:4px}
+  .acct-list::-webkit-scrollbar{width:9px}
+  .acct-list::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:6px}
+  .acct-list::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--acc) 38%,transparent);border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+  .acct-list::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--acc) 58%,transparent);background-clip:padding-box}
+  .account{padding:6px 13px;display:flex;align-items:center;gap:11px;transition:.16s;flex-shrink:0}
+  .account:hover{border-color:color-mix(in srgb,var(--acc) 48%,transparent);
+    box-shadow:var(--glass-sh),0 0 20px var(--glow),inset 0 0 26px color-mix(in srgb,var(--acc) 10%,transparent)}
+  .account .ic{width:37px;height:37px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:19px;line-height:1;
+    color:#05121c;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 0 14px var(--glow),inset 0 1px 0 rgba(255,255,255,.35)}
+  .account .info{flex:1;min-width:0}
+  .account .info b{font-size:14px;display:block}
+  .account .info small{font-size:11px;color:var(--mut)}
+  .minedot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mut);margin-right:5px;vertical-align:middle}
+  .minedot.on{background:var(--good);box-shadow:0 0 6px var(--good);animation:glowpulse 1.4s ease-in-out infinite}
+  body.offline .minedot.on{background:var(--mut);box-shadow:none;animation:none}
+  .account .bal{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+  .account .bal b{font-size:14px;text-shadow:0 0 12px rgba(40,224,255,.22)}
+  .account .bal .vsign{margin-right:3px}
+  .account .bal small{display:block;font-size:10.5px;color:var(--acc);font-weight:600}
+  .create{width:100%;margin-top:3px;padding:13px;border-radius:14px;background:transparent;color:var(--acc);
+    border:1px dashed color-mix(in srgb,var(--acc) 38%,transparent);font-weight:700;font-size:12.5px;transition:.16s}
+  .create:hover{background:color-mix(in srgb,var(--acc) 10%,transparent);border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 16px var(--glow)}
+  /* раскрывающаяся панель создания счёта (стекло, разворот вниз, «Закрыть») */
+  .create-panel{overflow:hidden;max-height:0;opacity:0;margin-top:0;border-radius:14px;
+    border:1px solid transparent;background:var(--glass);box-shadow:none;
+    backdrop-filter:blur(12px) saturate(150%);-webkit-backdrop-filter:blur(12px) saturate(150%);
+    transition:max-height .26s ease,opacity .2s ease,padding .26s ease,margin .26s ease,border-color .26s ease}
+  .create-panel.open{max-height:280px;opacity:1;margin-top:9px;padding:14px 15px 13px;
+    border:var(--glass-br);box-shadow:var(--glass-sh)}
+  .create-panel .mlabel{margin:0 0 6px}
+  .create-panel .minput{width:100%;font-size:13px;padding:12px 13px}
+  .create-panel .cp-btns{display:flex;gap:8px;margin-top:12px}
+  .create-panel .cp-btns .btn-ok,.create-panel .cp-btns .btn-cancel{flex:1;text-align:center}
+  /* панель мощности майнинга в модалке майнинга */
+  .mine-power{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .mine-power-t{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);margin-bottom:8px;font-weight:700}
+  .mine-warn{font-size:11px;color:var(--energy);line-height:1.4;margin:10px 0 0;padding:9px 11px;border-radius:10px;
+    background:color-mix(in srgb,var(--energy) 12%,transparent);border:1px solid color-mix(in srgb,var(--energy) 40%,transparent)}
+  .mine-power .mbtns{margin-top:12px}
+  .mine-power .mbtns .btn-ok{flex:1;text-align:center}
+
+  /* ── БАР СЕТИ ── */
+  .netbar{margin-top:12px;padding:11px 14px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;font-size:12px;transition:.16s;box-shadow:inset 0 0 18px color-mix(in srgb,var(--acc) 5%,transparent)}
+  .netbar:hover{border-color:color-mix(in srgb,var(--acc) 42%,transparent);
+    box-shadow:0 0 16px var(--glow),inset 0 0 22px color-mix(in srgb,var(--acc) 9%,transparent)}
+  #netDot{width:9px;height:9px;border-radius:50%;background:var(--mut);flex:none}
+  #netDot.on{background:var(--acc);box-shadow:0 0 10px var(--acc);animation:glowpulse 3s ease-in-out infinite}
+  #netSelect{background:transparent;border:none;color:var(--txt);font-weight:700;font-size:12px}
+  #netStatus{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--mut)}
+  #netStatus.on{color:var(--good);text-shadow:0 0 8px rgba(95,240,176,.5)}
+
+  @keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.05)}}
+  @keyframes gemlight{0%,100%{opacity:.3;transform:scale(.95)}50%{opacity:.6;transform:scale(1.08)}}
+  @keyframes glowpulse{0%,100%{opacity:.4}50%{opacity:.9}}
+
+  /* ── ДЕСКТОП: та же разметка, 2 колонки, центрирование ── */
+  @media(min-width:880px){
+    body{padding:24px}
+    /* Контейнер — на всю высоту окна, НО карточки НЕ растягиваются:
+       они пакуются к верху, а пустое место внизу СОХРАНЯЕТСЯ (задел под будущие блоки).
+       Пропорции фиксированы под десктопное окно. */
+    .app{max-width:960px;padding:20px 22px 18px;height:calc(100vh - 48px);display:flex;flex-direction:column}
+    .logo b{font-size:18px}
+    nav{margin-bottom:14px}
+    nav a{flex:none;padding:10px 16px;font-size:12px}
+    /* ДВЕ НЕЗАВИСИМЫЕ КОЛОНКИ (.col{display:flex;flex-direction:column}).
+       Правая колонка течёт сама по себе → зазор «статы → Счета» = зазору «баланс → кнопки»,
+       блок «Счета» поднимается вверх. Карточки НЕ растягиваются, пустота снизу сохраняется. */
+    .content{flex-direction:row;gap:14px;flex:1;min-height:0;align-items:start}
+    .col{gap:14px;min-height:0}
+    .col.left{flex:0 0 380px}
+    .col.right{flex:1;min-width:0}
+    .balance{padding:22px 20px}
+    .balance .amt{font-size:38px}
+    .balance .amt .sign{font-size:33px}
+    #crystal{width:118px;height:142px}
+    .gemlight{width:126px;height:126px}
+    /* счета: натуральная высота; при переполнении список скроллится */
+    .accounts{display:flex;flex-direction:column;min-height:0}
+    .acct-list{min-height:0;overflow-y:auto}
+  }
+  /* ── МОДАЛКИ: openModal() ставит display:block — позиционируем фиксированно ── */
+  .overlay{position:fixed;inset:0;background:rgba(4,8,16,.72);backdrop-filter:blur(3px);z-index:40}
+  /* .Modal (ВЕРХНИЙ регистр!): штатный closeModal() прячет только .Modal,.ModalDlg,#idOverlay — .modal в его селекторе закомментирован (client.js) */
+  .Modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;width:min(94vw,560px)}
+  /* ключ должен быть виден ЦЕЛИКОМ — 64 hex в mono 11px входят в 560px-карточку */
+  .minput.keyfield{font-size:11px;padding:9px 10px;letter-spacing:0}
+  .modal-card{position:relative;border-radius:18px;padding:20px 18px;background:var(--glass);backdrop-filter:blur(16px) saturate(150%);
+    -webkit-backdrop-filter:blur(16px) saturate(150%);border:var(--glass-br);box-shadow:var(--glass-sh)}
+  /* [UX] крестик закрытия в правом верхнем углу модалок */
+  .modal-x{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:9px;border:1px solid var(--line);
+    background:transparent;color:var(--mut);font-size:19px;line-height:1;display:grid;place-items:center;transition:.16s;z-index:3;padding:0}
+  .modal-x:hover{color:var(--txt);border-color:color-mix(in srgb,var(--acc) 45%,transparent);background:rgba(255,255,255,.06)}
+  .mtitle{padding-right:34px}/* чтобы заголовок не заезжал под крестик */
+  .modal-card .mtitle{font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin-bottom:12px}
+  .modal-card .mlabel{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--mut);margin:10px 0 4px}
+  .btn-xs{padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--mut);font-size:10.5px;font-weight:700}
+  .btn-xs:hover{color:var(--txt);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}
+  .modal-card .minput{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--txt);font-family:var(--font-mono);font-size:12.5px}
+  .modal-card .mrow{display:flex;gap:8px;align-items:center}
+  .modal-card .mrow .minput{flex:1;min-width:0}
+  .modal-card .mbtns{display:flex;gap:8px;margin-top:16px}
+  .modal-card .sum{font-family:var(--font-mono);font-size:20px;margin:8px 0}
+  .modal-card .to{font-size:12px;color:var(--mut);margin-bottom:8px}
+  .btn-ok{flex:1;padding:11px;border-radius:11px;border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);
+    background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-weight:700;font-size:12px}
+  .btn-ok:hover{background:color-mix(in srgb,var(--acc) 24%,transparent);box-shadow:0 0 14px var(--glow)}
+  .btn-cancel,.btn-sm{padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:transparent;
+    color:var(--mut);font-weight:700;font-size:12px}
+  .btn-cancel:hover,.btn-sm:hover{color:var(--txt);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}
+  .actions button[disabled]{opacity:.45;cursor:default;pointer-events:none}
+  .notice{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;max-width:82vw;
+    padding:10px 16px;border-radius:12px;background:var(--panel2);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);
+    color:var(--txt);font-size:12.5px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none}
+  .notice.err{border-color:#ff7a7a;color:#ffc2c2}
+  /* горизонтальная майнер-строка над статус-баром, сворачивается вниз */
+  .minerbar{display:flex;align-items:center;gap:14px;margin-top:12px;padding:9px 13px;border-radius:13px;
+    background:var(--panel2);border:1px solid var(--line);font-size:12px;transition:box-shadow .3s,opacity .3s}
+  .minerbar.mining{box-shadow:0 0 18px color-mix(in srgb,var(--good) 40%,transparent),inset 0 0 14px color-mix(in srgb,var(--good) 8%,transparent);
+    border-color:color-mix(in srgb,var(--good) 45%,transparent)}
+  .minerbar:not(.mining){opacity:.6}
+  .mb-pick{font-size:15px;flex:none}
+  .minerbar.mining .mb-pick{animation:minecube 3.8s ease-in-out infinite;filter:drop-shadow(0 0 6px var(--good))}
+  .mb-cell{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+  .mb-cell b{font-family:var(--font-mono);font-size:13px;color:var(--txt)}
+  .mb-k{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+  .mb-state{margin-left:auto;font-family:var(--font-mono);font-size:10.5px;color:var(--mut)}
+  .mb-collapse{flex:none;background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:8px;
+    width:26px;height:22px;font-size:14px;line-height:1;transition:.16s}
+  .mb-collapse:hover{color:var(--txt);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}
+  /* свёрнуто -> тонкий ярлычок-полоска над статус-баром (по центру, НЕ справа) */
+  .miner-tab{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:12px;
+    padding:6px 12px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);
+    color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.4px;transition:.16s}
+  .miner-tab:hover{color:var(--txt);border-color:color-mix(in srgb,var(--acc) 35%,transparent)}
+  .miner-tab.mining{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,transparent);
+    box-shadow:0 0 14px color-mix(in srgb,var(--good) 30%,transparent)}
+  .miner-tab.mining .miner-tab-pick{animation:minecube 3.8s ease-in-out infinite}
+  /* fallback-вспышка карточки баланса при награде */
+  @keyframes rewardflash{0%{box-shadow:0 0 0 rgba(40,224,255,0)}18%{box-shadow:0 0 40px 7px rgba(40,224,255,.6)}100%{box-shadow:0 0 0 rgba(40,224,255,0)}}
+  .reward-flash{animation:rewardflash 1.2s ease-out}
+  /* всплывающее «+N AXNT» у грани кристалла */
+  .crystal-plus{position:absolute;right:16px;top:64px;z-index:3;pointer-events:none;
+    font-family:var(--font-mono);font-size:15px;font-weight:700;color:#8cf2ff;
+    text-shadow:0 0 12px rgba(40,224,255,.9);animation:crystalplus 2.1s ease-out forwards}
+  @keyframes crystalplus{0%{opacity:0;transform:translateY(6px) scale(.9)}15%{opacity:1;transform:translateY(0) scale(1.05)}
+    70%{opacity:1;transform:translateY(-18px)}100%{opacity:0;transform:translateY(-34px)}}
+  /* история */
+  .modal-hist{width:min(94vw,520px)}
+  .hist-list{max-height:56vh;overflow-y:auto;display:flex;flex-direction:column;gap:7px;margin-top:4px}
+  .hist-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;background:var(--panel2);border:1px solid var(--line)}
+  .hist-dir{font-family:var(--font-mono);font-size:17px;width:18px;text-align:center;flex:none}
+  .hist-in .hist-dir{color:var(--good)} .hist-out .hist-dir{color:var(--energy)}
+  .hist-mid{flex:1;min-width:0} .hist-mid b{font-size:13px;display:block}
+  .hist-mid small{font-size:10.5px;color:var(--mut)}
+  .hist-amt{font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums;text-align:right;flex:none}
+  .hist-in .hist-amt{color:var(--good)} .hist-out .hist-amt{color:var(--energy)}
+  .hist-empty{color:var(--mut);font-size:12px;text-align:center;padding:18px}
+  .acct-hist-link{cursor:pointer}
+  .account{cursor:pointer}
+  /* баннер сохранения ключа */
+  .center-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:58;width:min(94vw,440px)}
+  #idKeysModal{z-index:62}/* «Показать ключ» из баннера (58) -> модалка ключей ПОВЕРХ */
+  .keysave-txt{line-height:1.5;color:#ffdede;font-size:12.5px;margin:8px 0 4px;
+    padding:10px 12px;border-radius:10px;background:rgba(255,120,120,.1);border:1px solid #ff7a7a}
+  /* модалка Получить */
+  .recv-big{font-family:var(--font-mono);font-size:30px;font-weight:600;color:var(--acc);
+    text-shadow:0 0 16px var(--glow);letter-spacing:1px;margin:4px 0 8px}
+  .recv-copy{width:auto}
+  /* копирование одним кликом — курсор-подсказка */
+  .acc-id,.hist-txid{cursor:pointer;border-bottom:1px dotted color-mix(in srgb,var(--acc) 45%,transparent)}
+  .acc-recv{margin-left:auto;flex:none;font-size:10.5px;padding:5px 10px;border-radius:9px;border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);
+    background:transparent;color:var(--acc);font-weight:700}
+  .acc-recv:hover{background:color-mix(in srgb,var(--acc) 12%,transparent)}
+  /* EXPLORER — обзор сети + статистика майнинга (порт GetBlockList/GetCurrentInfo под новый дизайн) */
+  .modal-exp{width:min(94vw,560px)}
+  .exp-sec-t{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);margin:14px 2px 7px;font-weight:700}
+  .exp-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .exp-tile{padding:11px 13px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+  .exp-tile .k{font-size:9.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--mut)}
+  .exp-tile .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:18px;font-weight:600;margin-top:4px;color:var(--txt);word-break:break-all}
+  .exp-tile.hl .v{color:var(--acc);text-shadow:0 0 12px var(--glow)}
+  .exp-tile.hl2 .v{color:var(--good);text-shadow:0 0 12px rgba(95,240,176,.4)}
+  .exp-blocks{max-height:38vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:4px}
+  .exp-brow{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+  .exp-brow.mine{border-color:color-mix(in srgb,var(--good) 50%,transparent);box-shadow:0 0 12px color-mix(in srgb,var(--good) 22%,transparent)}
+  .exp-bnum{font-family:var(--font-mono);font-weight:700;font-size:12px;color:var(--acc);flex:none;min-width:60px}
+  .exp-brow.mine .exp-bnum{color:var(--good)}
+  .exp-bmid{flex:1;min-width:0;color:var(--mut);font-size:10.5px;line-height:1.3}
+  .exp-bmid b{color:var(--txt);font-weight:600}
+  .exp-btag{flex:none;font-family:var(--font-mono);font-size:9px;padding:2px 7px;border-radius:6px;background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good);font-weight:700}
+  .exp-empty{color:var(--mut);font-size:12px;text-align:center;padding:16px}
+  .exp-fullbtns{display:flex;gap:8px;margin-top:4px}
+  .exp-fullbtns .btn-sm{flex:1;text-align:center}
+  /* полная таблица (блоки/аккаунты) — простой стиль + листание (как в классическом интерфейсе ноды) */
+  .modal-fulltable{width:min(96vw,760px)}
+  .ft-pager{display:flex;align-items:center;gap:6px;margin:2px 0 10px}
+  .ft-pg{background:var(--panel2);border:1px solid var(--line);color:var(--mut);border-radius:8px;
+    min-width:34px;height:30px;font-family:var(--font-mono);font-size:12px;font-weight:700;flex:none}
+  .ft-pg:hover{color:var(--txt);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}
+  .ft-jump{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;height:30px;text-align:center;font-family:var(--font-mono);font-size:12px;padding:0 6px}
+  .ft-wrap{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:10px;background:rgba(6,10,18,.5)}
+  .ft-table{width:100%;border-collapse:collapse;font-size:11.5px;font-family:var(--font-mono);white-space:nowrap}
+  .ft-table th{position:sticky;top:0;background:var(--panel2);color:var(--mut);font-weight:700;text-align:left;
+    padding:8px 10px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.4px;text-transform:uppercase;z-index:1}
+  .ft-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--txt)}
+  .ft-table tr:hover td{background:rgba(255,255,255,.03)}
+  .ft-table td.num,.ft-table th.num{text-align:right}
+  .ft-hashcell{color:var(--mut);font-size:10.5px}
+  .ft-mine td{background:color-mix(in srgb,var(--good) 9%,transparent)}
+  .ft-mine td:first-child{color:var(--good);font-weight:700}
+  .ft-empty{color:var(--mut);text-align:center;padding:16px}
+  .ft-foot{font-size:10.5px;color:var(--mut);margin-top:7px;text-align:center;font-family:var(--font-mono)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ФОН: сеть нод (генерируется инлайн-скриптом, без CDN) -->
+<svg class="netbg" id="netbg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"></svg>
+<div class="aurora"></div>
+
+<main class="app" id="app">
+
+  <!-- ХЕДЕР -->
+  <header class="hdr">
+    <div class="logo">
+      <div class="mark">
+        <!-- ЛОГО: перевёрнутый фрактал-△ с ромбом, линии -->
+        <svg width="23" height="21" viewBox="0 0 120 110" fill="none" stroke="#66ecff" stroke-width="4.4"
+             stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 9px #28e0ff)">
+          <path d="M12 12 L108 12 L60 100 Z"/>
+          <path d="M60 12 L36 56 M60 12 L84 56 M36 56 L60 100 M84 56 L60 100" stroke="#5c96ff"/>
+        </svg>
+      </div>
+      <b>AIcu<span>Net</span></b>
+    </div>
+    <div class="right">
+      <div class="langbar">
+        <button class="langbtn on" id="langEN" data-l="en">EN</button>
+        <button class="langbtn" id="langRU" data-l="ru">RU</button>
+      </div>
+      <button class="cog" id="btnSettings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ВКЛАДКИ -->
+  <nav>
+    <a class="on" id="navAccounts" data-en="ACCOUNTS" data-ru="СЧЕТА">СЧЕТА</a>
+    <a id="navSend" data-en="SEND" data-ru="ОТПРАВКА">ОТПРАВКА</a>
+    <a id="navAI" data-en="AI" data-ru="ИИ">ИИ</a>
+    <a id="navExplorer" data-en="EXPLORER" data-ru="ОБЗОР">ОБЗОР</a>
+  </nav>
+
+  <div class="content">
+
+    <div class="col left">
+
+    <!-- БАЛАНС (динамика) -->
+    <section class="glass balance" id="balanceCard">
+      <span class="gemlight"></span>
+      <canvas id="crystal" aria-hidden="true"></canvas>
+      <div class="lbl" data-en="Total balance" data-ru="Общий баланс">Общий баланс</div>
+      <div class="amt"><span class="sign">∀</span><span id="balValue">0.00</span> <span class="tk" id="balTicker">AXNT</span></div>
+      <div class="name" id="balCoin">Axinit</div>
+      <div class="sub" id="balSub" data-en="Digital crystal · mined by AIcuNet nodes" data-ru="Цифровой кристалл · добывается узлами AIcuNet">Цифровой кристалл · добывается узлами AIcuNet</div>
+    </section>
+
+    <!-- ДЕЙСТВИЯ -->
+    <section class="actions">
+      <button id="btnSend">
+        <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V6"/><path d="M6 12l6-6 6 6"/></svg></i>
+        <span data-en="SEND" data-ru="ОТПРАВКА">ОТПРАВКА</span>
+      </button>
+      <button id="btnSwap" disabled title="Обмен появится в следующих версиях" data-en-title="Swap arrives in a later version" data-ru-title="Обмен появится в следующих версиях">
+        <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13"/><path d="M14 6l3 3-3 3"/><path d="M20 15H7"/><path d="M10 12l-3 3 3 3"/></svg></i>
+        <span data-en="SWAP" data-ru="ОБМЕН">ОБМЕН</span> <span class="soon" data-en="soon" data-ru="скоро">скоро</span>
+      </button>
+      <button id="btnMine">
+        <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 4.3v8.4L12 20l-7.5-4.3V7.3L12 3z"/><path d="M4.7 7.4L12 11.6l7.3-4.2"/><path d="M12 11.6V20"/></svg></i>
+        <span data-en="MINE" data-ru="МАЙНИНГ">МАЙНИНГ</span>
+      </button>
+      <button id="btnAI">
+        <i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c.6 4.6 1.9 5.9 6.5 6.5-4.6.6-5.9 1.9-6.5 6.5-.6-4.6-1.9-5.9-6.5-6.5 4.6-.6 5.9-1.9 6.5-6.5z"/><path d="M18.6 14.4c.3 2 .8 2.5 2.8 2.8-2 .3-2.5.8-2.8 2.8-.3-2-.8-2.5-2.8-2.8 2-.3 2.5-.8 2.8-2.8z"/></svg></i>
+        <span data-en="AI" data-ru="ИИ">ИИ</span>
+      </button>
+    </section>
+
+    <!-- AI COMMONS -->
+    <section class="glass commons" id="commonsCard">
+      <div class="top">
+        <span class="l">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5ff0b0" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/></svg>
+          <span data-en="AI Commons · free AI" data-ru="AI Commons · бесплатный ИИ">AI Commons · бесплатный ИИ</span>
+          <span class="soon" data-en="soon" data-ru="скоро">скоро</span>
+        </span>
+        <span class="free"><span id="commonsUsed">0</span> / <span id="commonsCap">0</span> CuJ</span>
+      </div>
+      <div class="bar"><i id="commonsBar"></i></div>
+      <div class="rowb">
+        <span class="hint" data-en="Daily free AI-query allowance" data-ru="Дневной лимит бесплатных запросов к ИИ">Дневной лимит бесплатных запросов к ИИ</span>
+        <button class="ask" id="btnAskAI" data-en="Ask AI" data-ru="Спросить ИИ" disabled>Спросить ИИ</button>
+      </div>
+    </section>
+
+    </div><!-- /.col.left -->
+
+    <div class="col right">
+
+    <!-- CuJoule / CuTOPS -->
+    <section class="stats">
+      <div class="glass stat j" id="cujCard">
+        <div class="top">
+          <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg></i>
+          <span data-en="CuJoule · internal token" data-ru="CuJoule · внутр. токен">CuJoule · внутр. токен</span>
+          <span class="soon" data-en="soon" data-ru="скоро">скоро</span>
+        </div>
+        <div class="v"><span id="cujValue">0</span> <small>CuJ</small></div>
+        <div class="cap" data-en="Pays for compute &amp; AI tasks" data-ru="Оплата вычислений и AI-задач">Оплата вычислений и AI-задач</div>
+      </div>
+      <div class="glass stat t" id="cutopsCard">
+        <div class="top">
+          <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 14H4L12 4z"/></svg></i>
+          <span data-en="CuTOPS · rating" data-ru="CuTOPS · рейтинг">CuTOPS · рейтинг</span>
+          <span class="soon" data-en="soon" data-ru="скоро">скоро</span>
+        </div>
+        <div class="v"><span id="cutopsValue">0</span></div>
+        <div class="cap" id="cutopsTier" data-en="Contribution tier: —" data-ru="Ранг вклада: —">Ранг вклада: —</div>
+      </div>
+    </section>
+
+    <!-- СЧЕТА (динамика) -->
+    <section class="accounts">
+      <div class="accts-head">
+        <h3 data-en="Accounts" data-ru="Счета">Счета</h3>
+        <span class="cnt" id="acctCount">0</span>
+      </div>
+      <div class="acct-list" id="acctList">
+        <!-- ШАБЛОН СТРОКИ СЧЁТА (повторяется по числу реальных счетов) -->
+        <div class="glass account">
+          <div class="ic">∀</div>
+          <div class="info">
+            <b class="acc-name" data-en="Main" data-ru="Основной">Основной</b>
+            <small>ID: <span class="acc-id">—</span></small>
+          </div>
+          <div class="bal"><b><span class="vsign">∀</span><span class="acc-bal">0.00</span></b><small>AXNT</small></div>
+        </div>
+        <div class="glass account">
+          <div class="ic">∀</div>
+          <div class="info">
+            <b class="acc-name" data-en="Node rewards" data-ru="Награды узла">Награды узла</b>
+            <small><span class="minedot" id="minedot"></span><span data-en="Axinit mining" data-ru="Майнинг Axinit">Майнинг Axinit</span> · ID: <span class="acc-id">—</span></small>
+          </div>
+          <div class="bal"><b><span class="vsign">∀</span><span class="acc-bal">0.00</span></b><small>AXNT</small></div>
+        </div>
+      </div>
+      <!-- раскрывающаяся вниз панель создания счёта (в стиле стекла, с «Закрыть»). -->
+      <div class="create-panel" id="createPanel">
+        <label class="mlabel" for="newAccName"><span data-en="New account name" data-ru="Имя нового счёта">Имя нового счёта</span></label>
+        <input id="newAccName" class="minput" maxlength="40"
+               placeholder="Например: Личный / Накопления"
+               data-en-ph="e.g. Personal / Savings" data-ru-ph="Например: Личный / Накопления">
+        <div class="cp-btns">
+          <button type="button" class="btn-ok" id="createConfirm" data-en="Create" data-ru="Создать">Создать</button>
+          <button type="button" class="btn-cancel" id="createClose" data-en="Close" data-ru="Закрыть">Закрыть</button>
+        </div>
+      </div>
+      <button class="create" id="btnCreateAccount" data-en="+ Create account" data-ru="+ Создать счёт">+ Создать счёт</button>
+    </section>
+
+    </div><!-- /.col.right -->
+
+  </div>
+
+  <!-- БАР СЕТИ (динамика) -->
+  <!-- майнер-строка ГОРИЗОНТАЛЬНО, над статус-баром. Сворачивается ВНИЗ
+       (в тонкий ярлычок-кирку). Свечение по ФАКТИЧЕСКОМУ HashRate>0 (не по наличию счёта). -->
+  <button class="miner-tab" id="minerTab" title="Майнинг" data-en-title="Mining" data-ru-title="Майнинг" style="display:none">
+    <span class="miner-tab-pick">⛏</span><span class="miner-tab-txt" data-en="Mining" data-ru="Майнинг">Майнинг</span></button>
+  <section class="minerbar" id="minerPanel" style="display:none">
+    <span class="mb-pick">⛏</span>
+    <span class="mb-cell"><b id="minerHash">—</b><span class="mb-k" data-en="hashrate" data-ru="хешрейт">хешрейт</span></span>
+    <span class="mb-cell"><b id="minerAcc">—</b><span class="mb-k" data-en="account" data-ru="счёт">счёт</span></span>
+    <span class="mb-cell"><b id="minerCpu">—</b><span class="mb-k" data-en="cores" data-ru="ядра">ядра</span></span>
+    <span class="mb-cell"><b id="minerRam">—</b><span class="mb-k" data-en="RAM" data-ru="ОЗУ">ОЗУ</span></span>
+    <span class="mb-cell"><b id="minerRewards">0</b><span class="mb-k" data-en="blocks mined" data-ru="намайнено блоков">намайнено блоков</span></span>
+    <span id="minerState" class="mb-state"></span>
+    <button class="mb-collapse" id="minerCollapse" title="Свернуть" data-en-title="Collapse" data-ru-title="Свернуть" aria-label="Свернуть">⌄</button>
+  </section>
+  <footer class="netbar" id="netbar">
+    <span id="netDot"></span>
+    <span data-en="Network:" data-ru="Сеть:">Сеть:</span>
+    <select id="netSelect"><option>AIcuNet</option><option>AIcuNet-TEST</option></select>
+    <span id="netStatus" data-en="— not connected" data-ru="— нет связи">— нет связи</span>
+  </footer>
+
+</main>
+
+<!-- ============ Compat-shim (скрытые inputs для legacy обработчиков) ============
+     guard pattern: legacy JS читает эти id вместо своей разметки. Транзакционный/крипто-путь
+     НЕ переписывается — CreateAccount/SendMoneyBefore/SavePrivateKey используются как есть.
+     Это точечный шим: ровно то, что читают конкретные используемые обработчики. -->
+<input type="hidden" id="idAccountName" value="">
+<input type="hidden" id="idAMinerID" value="0">
+<input type="hidden" id="idSmart" value="0">
+<input type="hidden" id="idCurrency" value="AXNT">
+<input type="hidden" id="idWN" value="0">
+<input type="hidden" id="idSumSend" value="">
+<input type="hidden" id="idAccount" value="">
+<input type="hidden" id="idListNFT">
+<!-- GetSelectedToken() требует idListNFT.FirstSelect + элемент с dataset токена
+     (wallet-lib.js:212), иначе SendMoneyBefore выходит МОЛЧА. Пара idNFT0/idImg0 —
+     конвенция GetCopyNFTCard (idNFT->idImg, wallet-multicoin.js:248). -->
+<span id="idNFT0" data-token="AXNT" data-currency="0" data-id="" data-amount="0" style="display:none"></span>
+<img id="idImg0" src="./PIC/AXNT.svg" alt="" style="display:none">
+<button id="idSendButton" style="display:none">send</button>
+<div id="edit_mining_set" style="display:none"></div>
+<!-- легаси-цикл ПЕРЕЗАПУСКАЕТ СЕБЯ САМ (FindMyAccounts -> UpdatesData,
+     wallet-full.js:152 — например после успешного CreateAccount). Допущение «не зовём
+     OnInitWallet — цикла нет» ложно. Ниже — ВСЕ узлы, которые читает/пишет цикл
+     (полная трасса UpdatesData: SetConfigData/SetCurrentInfo/SetAccountsData/
+     CheckNameAccTo/CheckSending, 36 id). Узлы скрыты, данные в них безвредны. -->
+<div id="idStatus" style="display:none"></div><!-- ViewStatus() -->
+<div id="idStatusMining" style="display:none"></div><!-- SetStatusMining() -->
+<audio id="sound_err" style="display:none"></audio><!-- SetError() -> .play() -->
+<input type="hidden" id="idTo" value=""><!-- PAY TO = idTo (GetSendAccTo, wallet-lib:444); idAccount = FROM -->
+<input type="hidden" id="idDescription" value="">
+<button id="idSignJSON" style="display:none">sign</button><!-- CheckSending() пишет .disabled/.value -->
+<div id="idAutoDetectIP" style="display:none"></div>
+<div id="idAutoUpdate" style="display:none"></div>
+<div id="idBtRun" style="display:none"></div>
+<div id="idCanSaveConst" style="display:none"></div>
+<div id="idCloseShow" style="display:none"></div>
+<div id="idCoinName" style="display:none"></div>
+<div id="idCurBlockNum" style="display:none"></div>
+<div id="idDataPath" style="display:none"></div>
+<div id="idDeltaDB" style="display:none"></div>
+<div id="idDeltaTX" style="display:none"></div>
+<div id="idDeltaTime" style="display:none"></div>
+<div id="idDevelopService" style="display:none"></div>
+<div id="idDevelopService2" style="display:none"></div>
+<div id="idIP" style="display:none"></div>
+<div id="idLogLevel" style="display:none"></div>
+<div id="idLogLevelText" style="display:none"></div>
+<div id="idMiningParams" style="display:none"></div>
+<div id="idNameTo" style="display:none"></div>
+<div id="idNameTo2" style="display:none"></div>
+<div id="idOpenWallet" style="display:none"></div>
+<div id="idServerLog" style="display:none"></div>
+<div id="idShowContent" style="display:none"></div>
+<div id="idSpeedSignLib" style="display:none"></div>
+<div id="idStableScroll" style="display:none"></div>
+<div id="idToList" style="display:none"></div>
+<div id="idTokenNFT" style="display:none"></div>
+<div id="idUseMining" style="display:none"></div>
+<div id="idUseMiningShards" style="display:none"></div>
+<div id="idWalletVersion" style="display:none"></div>
+<div id="wallet_config_tab" style="display:none"></div>
+<div id="idMyTotalSum" style="display:none"></div>
+<div id="idPort" style="display:none"></div><!-- SetConstValue (wallet-full:672-678) получает id аргументом — элемент нужен, хотя прямого обращения по id в коде нет -->
+<div id="idHTTPPort" style="display:none"></div>
+<div id="idHTTPPassword" style="display:none"></div>
+<div id="idPercentMining" style="display:none"></div>
+<div id="idMiningAccount" style="display:none"></div>
+<input type="hidden" id="idTypeKey" value="private"><!-- активная NewPrivateKey
+     (wallet-full-new.js:189, грузится позже) idTypeKey НЕ трогает, но версия из wallet-full.js:73
+     обращается БЕЗ гварда — оборона от смены порядка загрузки. value="private" = правильная ветка
+     SetVisibleItemByTypeKey. -->
+<!-- grid_accounts: SetAccountsData -> ASetGridData требует header-строку (row0.cells,
+     client.js CompileColumnArr — БЕЗ гварда). Таблица штатная (wallet.html:214), скрыта. -->
+<div style="display:none">
+<table id="grid_accounts" class="grid">
+    <tr>
+        <th id="(RetHistoryAccount(Item))" class="id">ID</th>
+        <th id="(RetEditAccount(Item))" data-name="Account name" class="name ">Name</th>
+        <th id="SUM_TO_STRING(Item.Value)" class="sum bold">Amount</th>
+        <th id="ACurrencyNameItem(Item)" data-name="Currency" class="cur">Cur</th>
+        <th id="(RetCountERC(Item))" class="">ERC</th>
+        <th id="Item.Adviser" data-name="Adviser" class="">Adv</th>
+        <th id="(RetChangeSmart(Item))" data-name="Smart contract (DApp)" class="">Smart</th>
+        <th id="Item.WN" class="num" style="width: 30px;"></th>
+        <th id="GetStateItem(Item)" class="code">State</th>
+    </tr>
+</table>
+<canvas width="800" height="60" id="idBlockInfo"></canvas><!-- StartDrawBlockInfo: getContext БЕЗ гварда -->
+</div>
+
+<!-- выбор счёта для майнинга. Data.MiningAccount из const.lst —
+     не источник истины (дефолтная «10» ноды может быть чужим счётом). -->
+<div id="idMineForm" class="Modal" style="display:none">
+  <div class="modal-card">
+    <div class="mtitle" data-en="Mining" data-ru="Майнинг">Майнинг</div>
+    <label class="mlabel" for="mineAcc"><span data-en="Reward account (yours only)" data-ru="Счёт для наград (только ваши)">Счёт для наград (только ваши)</span></label>
+    <select id="mineAcc" class="minput"></select>
+    <div class="mbtns">
+      <button type="button" class="btn-ok" id="mineGo" data-en="Enable on this account" data-ru="Включить на этот счёт">Включить на этот счёт</button>
+      <button type="button" class="btn-cancel" id="mineCancel" data-en="Cancel" data-ru="Отмена">Отмена</button>
+    </div>
+    <!-- управление мощностью майнинга прямо из кошелька (SaveConstant DoMining:1 — применяется вживую) -->
+    <div class="mine-power">
+      <div class="mine-power-t" data-en="Mining power" data-ru="Мощность майнинга">Мощность майнинга</div>
+      <label class="mlabel" for="mineMemGb"><span data-en="Memory, GB" data-ru="Память, ГБ">Память, ГБ</span></label>
+      <input id="mineMemGb" class="minput" type="number" step="0.5" min="0.1" placeholder="2">
+      <label class="mlabel" for="mineCpuPct"><span data-en="CPU load, %" data-ru="Нагрузка на процессор, %">Нагрузка на процессор, %</span></label>
+      <input id="mineCpuPct" class="minput" type="number" min="1" max="100" placeholder="30">
+      <div id="minePowWarn" class="mine-warn" style="display:none"></div>
+      <div class="mbtns">
+        <button type="button" class="btn-ok" id="minePowApply" data-en="Apply power" data-ru="Применить мощность">Применить мощность</button>
+        <button type="button" class="btn-cancel" id="minePowCancel" data-en="Cancel" data-ru="Отмена">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- форма отправки (вместо prompt). Поля пишутся в шим -> SendMoneyBefore() как есть. -->
+<div id="idSendForm" class="Modal" style="display:none">
+  <div class="modal-card">
+    <div class="mtitle" data-en="Send" data-ru="Отправка">Отправка</div>
+    <label class="mlabel" for="sendFrom" data-en="From account" data-ru="Со счёта">Со счёта</label>
+    <select id="sendFrom" class="minput"></select>
+    <label class="mlabel" for="sendTo" data-en="To (account ID)" data-ru="Кому (ID счёта)">Кому (ID счёта)</label>
+    <input id="sendTo" class="minput" inputmode="numeric" placeholder="номер счёта" data-en-ph="account number" data-ru-ph="номер счёта">
+    <label class="mlabel" for="sendAmount"><span data-en="Amount AXNT" data-ru="Сумма AXNT">Сумма AXNT</span> · <a href="#" id="sendMax" style="color:var(--acc)">max</a></label>
+    <input id="sendAmount" class="minput" inputmode="decimal" placeholder="0.00">
+    <label class="mlabel" for="sendDesc" data-en="Description (optional)" data-ru="Описание (необязательно)">Описание (необязательно)</label>
+    <input id="sendDesc" class="minput" maxlength="200">
+    <div class="mbtns">
+      <button type="button" class="btn-ok" id="sendGo" data-en="Send" data-ru="Отправить">Отправить</button>
+      <button type="button" class="btn-cancel" id="sendCancel" data-en="Cancel" data-ru="Отмена">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка подтверждения отправки (idBlockOnSend для SendMoneyBefore → openModal).
+     Это живой узел send-потока, не мёртвый DOM — обязателен для SendMoney(). -->
+<div id="idBlockOnSend" class="Modal" style="display:none">
+  <div class="modal-card">
+    <div id="idTokenHolder"></div>
+    <div class="sum">∑ <span id="idOnSendSum"></span> <span id="idOnSendCoinName"></span></div>
+    <div class="to"><span id="idOnSendToName"></span></div>
+    <div class="to" id="uiToPubkey"></div><!-- проверенный ключ получателя -->
+    <div id="idOnSendWarning" style="display:none;color:#ffb54a">⚠ Большая сумма — двойная проверка</div>
+    <button id="idBtOnSend" class="btn-ok" data-en="Confirm" data-ru="Подтвердить" onclick="if(typeof SendMoney==='function')SendMoney()">Подтвердить</button>
+    <button class="btn-cancel" data-en="Cancel" data-ru="Отмена" onclick="closeModal()">Отмена</button>
+  </div>
+</div>
+<!-- Экран ключей (EDIT WALLET INFO). Функции штатные: NewPrivateKey() пишет в idKeyNew
+     и через SetVisibleItemByTypeKey() обновляет idPubKey; SavePrivateKey() читает idKeyNew.
+     Правило: ключ НЕ в DOM до явного «Показать». -->
+<div id="idKeysModal" class="Modal" style="display:none">
+  <div class="modal-card">
+    <div class="mtitle" data-en="Wallet keys" data-ru="Ключи кошелька">Ключи кошелька</div>
+    <label class="mlabel" for="idKeyNew"><span data-en="Private key" data-ru="Приватный ключ">Приватный ключ</span>
+      <button type="button" class="btn-xs" id="btnKeyShow" data-en="Show" data-ru="Показать">Показать</button></label>
+    <input id="idKeyNew" type="password" class="minput keyfield" value="" autocomplete="off" spellcheck="false" placeholder="скрыт — нажмите «Показать»" data-en-ph="hidden — tap “Show”" data-ru-ph="скрыт — нажмите «Показать»">
+    <label class="mlabel" for="idPubKey"><span data-en="Public key" data-ru="Публичный ключ">Публичный ключ</span></label>
+    <input id="idPubKey" type="text" class="minput keyfield" readonly>
+    <div class="mbtns">
+      <button type="button" class="btn-sm" id="btnKeyGen" data-en="Generate" data-ru="Сгенерировать">Сгенерировать</button>
+      <button type="button" class="btn-ok" id="btnKeySave" data-en="Save" data-ru="Сохранить">Сохранить</button>
+      <button type="button" class="btn-cancel" id="btnKeysClose" data-en="Close" data-ru="Закрыть">Закрыть</button>
+    </div>
+  </div>
+</div>
+<!-- История транзакций счёта (GetHistoryTransactions, постранично по NextPos). -->
+<div id="idHistModal" class="Modal" style="display:none">
+  <div class="modal-card modal-hist">
+    <div class="mtitle"><span id="histTitle" data-en="Account history" data-ru="История счёта">История счёта</span></div>
+    <div class="hist-list" id="histList"></div>
+    <div class="mbtns">
+      <button type="button" class="btn-ok" id="histMore" style="display:none" data-en="Load more" data-ru="Листать дальше">Листать дальше</button>
+      <button type="button" class="btn-cancel" id="histClose" data-en="Close" data-ru="Закрыть">Закрыть</button>
+    </div>
+  </div>
+</div>
+<div id="idOverlay" class="overlay" style="display:none"></div>
+<!-- Видимые уведомления нового UI: SetError/SetStatus легаси пишут в СКРЫТЫЙ idStatus —
+     пользователь их не видит. -->
+<div id="uiNotice" class="notice"></div>
+<!-- Несбрасываемый призыв сохранить ключ при первом появлении валидного ключа.
+     Защита от потери ключа (и доступа к монетам). Не по таймеру — до «Я сохранил». -->
+<div id="keySaveOverlay" class="overlay" style="display:none;z-index:57"></div>
+<div id="keySaveBanner" class="center-modal" style="display:none">
+  <div class="modal-card">
+    <div class="mtitle" data-en="⚠ Save your key" data-ru="⚠ Сохраните ключ">⚠ Сохраните ключ</div>
+    <div class="keysave-txt" data-en="This private key is the ONLY access to your accounts and coins. Without it recovery is IMPOSSIBLE. Store it in a password manager or on paper." data-ru="Приватный ключ — единственный доступ к вашим счетам и монетам. Без него восстановить их НЕВОЗМОЖНО. Запишите в менеджер паролей или на бумагу.">Приватный ключ — единственный доступ к вашим счетам и монетам. Без него восстановить их НЕВОЗМОЖНО. Запишите в менеджер паролей или на бумагу.</div>
+    <div class="mbtns">
+      <button type="button" class="btn-sm" id="keySaveShow" data-en="Show key" data-ru="Показать ключ">Показать ключ</button>
+      <button type="button" class="btn-ok" id="keySaveAck" data-en="I saved it" data-ru="Я сохранил">Я сохранил</button>
+    </div>
+  </div>
+</div>
+<!-- Модалка «Получить» (адрес приёма) -->
+<div id="idRecvModal" class="Modal" style="display:none">
+  <div class="modal-card">
+    <div class="mtitle" id="recvTitle" data-en="Receive" data-ru="Получить">Получить</div>
+    <label class="mlabel"><span data-en="Account number" data-ru="Номер счёта">Номер счёта</span></label>
+    <div class="recv-big" id="recvNum">—</div>
+    <button type="button" class="btn-sm recv-copy" id="recvCopyNum" data-en="Copy number" data-ru="Копировать номер">Копировать номер</button>
+    <label class="mlabel" style="margin-top:12px"><span data-en="Public key (address)" data-ru="Публичный ключ (адрес)">Публичный ключ (адрес)</span></label>
+    <input id="recvPub" class="minput keyfield" readonly>
+    <div class="mbtns">
+      <button type="button" class="btn-ok" id="recvCopyPub" data-en="Copy key" data-ru="Копировать ключ">Копировать ключ</button>
+      <button type="button" class="btn-cancel" id="recvClose" data-en="Close" data-ru="Закрыть">Закрыть</button>
+    </div>
+  </div>
+</div>
+<!-- EXPLORER — обзор сети + статистика майнинга.
+     Порт функционала старого explorer.html (GetCurrentInfo/GetBlockList) под новый дизайн-каркас.
+     Ответы: GetCurrentInfo{MaxNumBlockDB,CurBlockNum,VersionNum}; GetBlockList{StartNum,CountNum,ChainMode}
+     -> {result, arr:[{BlockNum,Miner,Power,...}]}. «Намайнено блоков»/«Всего намайнено» — из истории
+     mining-счёта (входящие от протокольного счёта 0), один источник с панелью майнинга. -->
+<div id="idExplorerModal" class="Modal" style="display:none">
+  <div class="modal-card modal-exp">
+    <div class="mtitle"><span data-en="Explorer" data-ru="Обзор сети">Обзор сети</span></div>
+
+    <div class="exp-sec-t" data-en="Network" data-ru="Сеть">Сеть</div>
+    <div class="exp-grid">
+      <div class="exp-tile"><div class="k" data-en="Height (DB)" data-ru="Высота (БД)">Высота (БД)</div><div class="v" id="expHeight">—</div></div>
+      <div class="exp-tile"><div class="k" data-en="Current block" data-ru="Текущий блок">Текущий блок</div><div class="v" id="expCurrent">—</div></div>
+      <div class="exp-tile"><div class="k" data-en="Sync" data-ru="Синхронизация">Синхронизация</div><div class="v" id="expSync">—</div></div>
+      <div class="exp-tile"><div class="k" data-en="Protocol ver." data-ru="Версия протокола">Версия протокола</div><div class="v" id="expVersion">—</div></div>
+    </div>
+
+    <div class="exp-sec-t" id="expMineTitle" data-en="Your mining" data-ru="Ваш майнинг">Ваш майнинг</div>
+    <div class="exp-grid" id="expMineGrid">
+      <div class="exp-tile hl2"><div class="k" data-en="Blocks mined" data-ru="Намайнено блоков">Намайнено блоков</div><div class="v" id="expBlocks">—</div></div>
+      <div class="exp-tile hl"><div class="k" data-en="Total mined, AXNT" data-ru="Всего намайнено, AXNT">Всего намайнено, AXNT</div><div class="v" id="expMined">—</div></div>
+    </div>
+    <div id="expMineNote" style="font-size:10.5px;color:var(--mut);margin:7px 2px 0;line-height:1.4"></div>
+
+    <div class="exp-sec-t" data-en="Latest blocks" data-ru="Последние блоки">Последние блоки</div>
+    <div class="exp-blocks" id="expBlockList"><div class="exp-empty" data-en="Loading…" data-ru="Загрузка…">Загрузка…</div></div>
+
+    <div class="exp-sec-t" data-en="Full data — browse everything" data-ru="Полные данные — смотреть всё">Полные данные — смотреть всё</div>
+    <div class="exp-fullbtns">
+      <button type="button" class="btn-sm" id="expAllBlocks" data-en="All blocks" data-ru="Все блоки">Все блоки</button>
+      <button type="button" class="btn-sm" id="expAllAccounts" data-en="Accounts" data-ru="Аккаунты">Аккаунты</button>
+    </div>
+
+    <div class="mbtns">
+      <button type="button" class="btn-ok" id="expRefresh" data-en="Refresh" data-ru="Обновить">Обновить</button>
+      <button type="button" class="btn-cancel" id="expClose" data-en="Close" data-ru="Закрыть">Закрыть</button>
+    </div>
+  </div>
+</div>
+<!-- ПОЛНАЯ простая таблица (блоки/аккаунты) с листанием — прозрачность средств, стиль
+     старой ноды Tera. Открывается поверх Explorer, «Назад» возвращает в обзор. GetBlockList/
+     GetAccountList постранично (StartNum+CountNum, см. html-server.js:654/671). -->
+<div id="idFullTableModal" class="Modal" style="display:none">
+  <div class="modal-card modal-fulltable">
+    <div class="mtitle"><span id="ftTitle">—</span></div>
+    <div class="ft-pager">
+      <button type="button" class="ft-pg" id="ftFirst" title="В начало" data-en-title="First" data-ru-title="В начало">|&lt;</button>
+      <button type="button" class="ft-pg" id="ftPrev" title="Назад" data-en-title="Prev" data-ru-title="Назад">&lt;</button>
+      <input id="ftNum" class="ft-jump" type="number" min="0" value="0">
+      <button type="button" class="ft-pg" id="ftGo" title="Перейти" data-en-title="Go" data-ru-title="Перейти">→</button>
+      <button type="button" class="ft-pg" id="ftNext" title="Вперёд" data-en-title="Next" data-ru-title="Вперёд">&gt;</button>
+      <button type="button" class="ft-pg" id="ftLast" title="В конец" data-en-title="Last" data-ru-title="В конец">&gt;|</button>
+    </div>
+    <div class="ft-wrap">
+      <table class="ft-table"><thead id="ftHead"></thead><tbody id="ftBody"></tbody></table>
+    </div>
+    <div class="ft-foot"><span id="ftInfo"></span></div>
+    <div class="mbtns">
+      <button type="button" class="btn-cancel" id="ftClose" data-en="← Back to Explorer" data-ru="← Назад в обзор">← Назад в обзор</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ ЯЗЫК (RU/EN) ============ */
+function setLang(l){
+  document.querySelectorAll('[data-en]').forEach(function(e){
+    var v = (l==='ru') ? e.getAttribute('data-ru') : e.getAttribute('data-en');
+    if(v!==null) e.textContent = v;
+  });
+  document.querySelectorAll('.langbtn').forEach(function(b){ b.classList.toggle('on', b.dataset.l===l); });
+  document.querySelectorAll('[data-en-ph]').forEach(function(e){ // перевод placeholder
+    var v = (l==='ru') ? e.getAttribute('data-ru-ph') : e.getAttribute('data-en-ph');
+    if(v!==null) e.setAttribute('placeholder', v);
+  });
+  document.querySelectorAll('[data-en-title]').forEach(function(e){ // перевод title-тултипов
+    var v = (l==='ru') ? e.getAttribute('data-ru-title') : e.getAttribute('data-en-title');
+    if(v!==null){ e.setAttribute('title', v); if(e.hasAttribute('aria-label')) e.setAttribute('aria-label', v); }
+  });
+  document.documentElement.lang = l;
+  window.__lang = l;
+  // динамические строки (статусы/панель/история) — перерисовать под новый язык
+  try { if (window.__rerenderI18n) window.__rerenderI18n(); } catch(e){}
+}
+window.L = function (ru, en) { return window.__lang === 'en' ? en : ru; };
+document.getElementById('langEN').addEventListener('click',function(){setLang('en');});
+document.getElementById('langRU').addEventListener('click',function(){setLang('ru');});
+setLang('en');
+
+/* ============ ФОН: сеть нод (инлайн SVG, периодически соединяется) ============ */
+(function(){
+  var svg=document.getElementById('netbg'); if(!svg) return;
+  var NS='http://www.w3.org/2000/svg', W=1200, H=800, MAX=44, MIN=18, seed=7;
+  function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+  var pts=[]; for(var i=0;i<MAX;i++) pts.push([30+rnd()*(W-60), 30+rnd()*(H-60)]);
+  var links=[];
+  for(var i=1;i<MAX;i++){
+    var d=[]; for(var j=0;j<i;j++) d.push([j, Math.hypot(pts[i][0]-pts[j][0], pts[i][1]-pts[j][1])]);
+    d.sort(function(a,b){return a[1]-b[1];});
+    for(var k=0;k<Math.min(2,d.length);k++) links.push([i,d[k][0]]);
+  }
+  var lineEls=[], nodeEls=[];
+  links.forEach(function(l,idx){
+    var ln=document.createElementNS(NS,'line');
+    ln.setAttribute('x1',pts[l[0]][0].toFixed(1)); ln.setAttribute('y1',pts[l[0]][1].toFixed(1));
+    ln.setAttribute('x2',pts[l[1]][0].toFixed(1)); ln.setAttribute('y2',pts[l[1]][1].toFixed(1));
+    ln.setAttribute('class','lnk'); ln.style.animationDelay=((idx*0.27)%4).toFixed(2)+'s';
+    ln._a=l[0]; ln._b=l[1]; svg.appendChild(ln); lineEls.push(ln);
+  });
+  pts.forEach(function(p,idx){
+    var c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',p[0].toFixed(1)); c.setAttribute('cy',p[1].toFixed(1));
+    c.setAttribute('r',(2+(idx%4===0?1.3:0)).toFixed(1)); c.setAttribute('class','node');
+    c.style.animationDelay=((idx*0.23)%3).toFixed(2)+'s'; svg.appendChild(c); nodeEls.push(c);
+  });
+  var count=MIN;
+  function apply(){
+    for(var i=0;i<MAX;i++) nodeEls[i].classList.toggle('on', i<count);
+    for(var k=0;k<lineEls.length;k++){ var e=lineEls[k]; e.classList.toggle('on', e._a<count && e._b<count); }
+  }
+  apply();
+  setInterval(function(){ count=Math.max(MIN,Math.min(MAX,count+Math.round((rnd()-0.5)*12))); apply(); }, 3000);
+})();
+
+</script>
+
+<!-- THREE.js — ЛОКАЛЬНЫЙ файл (никаких CDN). Разработчик кладёт библиотеку в ./JS/three.min.js -->
+<script src="./JS/three.min.js"></script>
+<script>
+/* ============ КРИСТАЛЛ: THREE.js-многогранник ============
+   Рендерер привязан к СУЩЕСТВУЮЩЕМУ <canvas id="crystal">, размеры берутся из его CSS-бокса
+   (на десктопе меняются медиазапросом → пересчёт на resize).
+   Сохранено: freeze при body.offline · prefers-reduced-motion · flash-механизм. */
+(function(){
+  if(!window.THREE) return;
+  var canvas=document.getElementById('crystal');
+  if(!canvas) return;
+
+  function boxSize(){
+    var r=canvas.getBoundingClientRect();
+    return { w: Math.max(1, Math.round(r.width)), h: Math.max(1, Math.round(r.height)) };
+  }
+  var S=boxSize(), W=S.w, H=S.h;
+
+  var renderer=new THREE.WebGLRenderer({canvas:canvas,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setSize(W,H,false);
+  var scene=new THREE.Scene();
+  var camera=new THREE.PerspectiveCamera(50,W/H,0.1,100);
+  camera.position.set(0,0.25,4.3); camera.lookAt(0,0,0);
+
+  var geo=new THREE.OctahedronGeometry(1,0); geo.scale(1.13,1.45,1.13);
+  var faceMat=new THREE.MeshStandardMaterial({color:0x0e3856,transparent:true,opacity:0.42,
+    metalness:0.5,roughness:0.07,emissive:0x0c4670,emissiveIntensity:0.5,flatShading:true,side:THREE.DoubleSide});
+  var gem=new THREE.Mesh(geo,faceMat); scene.add(gem);
+
+  var edgeGeo=new THREE.EdgesGeometry(geo);
+  var edgeMat=new THREE.LineBasicMaterial({color:0x8cf2ff,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending});
+  gem.add(new THREE.LineSegments(edgeGeo,edgeMat));
+  var haloMat=new THREE.LineBasicMaterial({color:0x28e0ff,transparent:true,opacity:0.22,blending:THREE.AdditiveBlending});
+  var halo=new THREE.LineSegments(edgeGeo,haloMat); halo.scale.set(1.07,1.07,1.07); gem.add(halo);
+
+  scene.add(new THREE.AmbientLight(0x2c4e72,0.65));
+  var d1=new THREE.DirectionalLight(0xcfe6ff,1.05); d1.position.set(2,3,4); scene.add(d1);
+  var p1=new THREE.PointLight(0x39a0ff,0.95,20); p1.position.set(-3,-1,2); scene.add(p1);
+  var p2=new THREE.PointLight(0x9fd8ff,0.8,20); p2.position.set(3,1.5,-2); scene.add(p2);
+
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches, flash=0;
+  function render(){
+    var off=document.body.classList.contains('offline');
+    if(!reduce&&!off){ gem.rotation.y-=0.004; gem.rotation.z=Math.sin(Date.now()*0.00035)*0.16; }
+    if(flash>0){flash-=0.02; edgeMat.opacity=0.95; faceMat.emissiveIntensity=0.5+flash*1.3; gem.scale.setScalar(1+flash*0.13);}
+    renderer.render(scene,camera);
+    requestAnimationFrame(render);
+  }
+  render();
+
+  /* Вспышка при начислении. Не симулируется — вызывается по реальному
+     событию входящей транзакции / награды узла:  window.crystalFlash(); */
+  window.crystalFlash=function(){ if(!document.body.classList.contains('offline')) flash=1; };
+
+  /* размер canvas меняется на десктопе (медиазапрос) → пересчёт рендерера */
+  window.addEventListener('resize', function(){
+    var s=boxSize();
+    if(s.w===W && s.h===H) return;
+    W=s.w; H=s.h;
+    renderer.setSize(W,H,false);
+    camera.aspect=W/H; camera.updateProjectionMatrix();
+  });
+})();
+</script>
+
+<!-- ============ Legacy JS-стек ============
+     Подключаем ТОЛЬКО модули, которые реально нужны используемым обработчикам.
+     Порядок: база → крипта → клиент → токены → wallet-lib → wallet-node → wallet-multicoin → wallet-full → wallet-full-new.
+     ВАЖНО: НЕ зовём OnInitWallet() — он стартует UpdatesData-цикл с 38 legacy-id (которых в новом UI нет). -->
+<script>
+/* full-node marker ДО легаси-скриптов (штатный wallet.html:57 ставит его до
+   OnInitWallet). IsFullNode() (client.js:2336) читает ТОЛЬКО его; от него зависят лимит
+   транзакции 65.1КБ vs 12КБ (client-tx.js:7-18) и выбор СЕРВЕРНОЙ подписи (client-tx.js:188). */
+try { localStorage["BIGWALLET"] = 1; } catch (e) {}
+</script>
+<!-- Штатный НАБОР И ПОРЯДОК из wallet.html:19-37. Ручной отбор «только
+     нужное» ломает зависимости (InitTeraHashConst <- terahashlib.js, зовётся из
+     SetBlockChainConstant при КАЖДОМ SetConfigData), трасса цикла: client-promise.js
+     (ACall/AReadAccount/AStaticCall/GetSmartList), wallet-hash-info.js (StartDrawBlockInfo —
+     безусловный вызов из SetConfigData, wallet-full.js:722), terabuf.js (зависимость terahashlib). -->
+<script src="./JS/coinlib.js"></script>
+<script src="./JS/client.js"></script>
+<script src="./JS/client-promise.js"></script>
+<script src="./JS/client-tokens.js"></script>
+<script src="./JS/client-tx.js"></script>
+<script src="./JS/sha3.js"></script>
+<script src="./JS/sign-lib-min.js"></script>
+<script src="./JS/crypto-client.js"></script>
+<script src="./JS/wallet-lib.js"></script>
+<script src="./JS/wallet-node.js"></script>
+<script src="./JS/terabuf.js"></script>
+<script src="./JS/terahashlib.js"></script>
+<script src="./JS/wallet-hash-info.js"></script>
+<script src="./JS/wallet-full.js"></script>
+<script src="./JS/wallet-full-new.js"></script>
+<script src="./JS/wallet-multicoin.js"></script>
+<!-- ОБЩИЕ предохранители write-путей. Отдельный файл, потому что
+     web-wallet.html (лёгкий кошелёк) делит send/create-код (wallet-lib, client-tx) и
+     должен подключить ТОТ ЖЕ модуль — фикс один на оба кошелька. -->
+<script src="./JS/wallet-guards.js"></script>
+
+<!-- ============ ТОНКИЙ ОПРОС + ОБРАБОТЧИКИ ============
+     Свой polling через GetData (GetWalletInfo{} + /GetWalletAccounts{} каждые 2 с).
+     Пишем ТОЛЬКО в новые id разметки (balValue, acctList, acctCount, netDot, netStatus, btnMine, minedot).
+     Глобалы (PubKeyStr, CanSendTransaction, PrivKeyStr) — обновляем из ответа для write-пути.
+     Ключ тянем явно через LoadPrivateKey(), если WalletCanSign и ключа в памяти ещё нет. -->
+<script>
+(function () {
+  var BAL = { sum: 0, accounts: [], mining: { account: null, countCpu: 0, paused: 0 } };
+  var NET = { online: false, block: 0, lastOk: 0, delta: 0, synced: false };
+  var MINER_PREV_REWARD_SUM = null, MINER_PREV_ACC = null;
+  // Накопительно НА СЧЁТ (переживает перезагрузку), не за сессию.
+  function rewTotal(acc) { try { return +localStorage["rewSum_" + acc] || 0; } catch (e) { return 0; } }
+  function rewCount(acc) { try { return +localStorage["rewCnt_" + acc] || 0; } catch (e) { return 0; } }
+  // Панель показывает ПОЛНУЮ сумму намайненного за ВСЁ время на счёт
+  // (не «с запуска»), а КОЛИЧЕСТВО намайненных блоков — в EXPLORER. Оба числа берём из ОДНОГО
+  // авторитетного источника: история счёта, входящие от протокольного счёта 0.
+  // ФАКТ (accounts.js:370 / accounts-tr.js:601): награда майнеру = SendMoneyTR из acc 0,
+  //   history-запись {Direct:"+", CorrID:0, Description:"Coin base miner"}. Детект по CorrID===0
+  //   надёжнее строки (не зависит от текста описания). Строку держим как OR-фолбэк.
+  var rewInitDone = {};
+  function isMinerReward(it) {
+    if (!it || it.Direct === "-") return false; // только входящие
+    if (+it.CorrID === 0) return true;           // отчеканено протокольным счётом 0
+    return /coin base/i.test(String(it.Description || "")); // фолбэк по описанию
+  }
+  function initRewardsFromHistory(acc, force) { // пересчёт СУММЫ и КОЛИЧЕСТВА из истории
+    if (!acc || typeof window.GetData !== "function") return;
+    if (rewInitDone[acc] && !force) return;
+    rewInitDone[acc] = 1;
+    var sum = 0, cnt = 0, pages = 0, pos = null, gotResp = false;
+    (function page() {
+      var p = { AccountID: acc, Count: 100, GetDescription: 1 };
+      if (pos) p.NextPos = pos; // NextPos только со 2-й страницы
+      window.GetData("GetHistoryTransactions", p, function (D) {
+        gotResp = true;
+        var arr = (D && D.History) || [], last = 0;
+        arr.forEach(function (it) {
+          if (isMinerReward(it)) {
+            cnt++;
+            sum += (typeof window.FLOAT_FROM_COIN === "function" ? FLOAT_FROM_COIN({ SumCOIN: it.SumCOIN || 0, SumCENT: it.SumCENT || 0 }) : 0);
+          }
+          if (it.NextPos) last = it.NextPos;
+        });
+        pages++;
+        if (arr.length >= 100 && last && pages < 1000) { pos = last; page(); } // до конца истории (стоп когда страница <100); 1000 = страховочный потолок ~100k
+        else {
+          // Пишем только при РЕАЛЬНОМ ответе ноды — иначе (нода молчит) сохраняем прежнее значение,
+          // не обнуляем рабочий счётчик.
+          if (gotResp) { try { localStorage["rewSum_" + acc] = sum.toFixed(9); localStorage["rewCnt_" + acc] = String(cnt); } catch (e) {} }
+          renderMining();
+          if (window.__explorerOpen && typeof window.__renderExplorerMine === "function") window.__renderExplorerMine();
+        }
+      });
+    })();
+  }
+  // ЕДИНАЯ точка эффекта награды — счётчик, notify и вспышка НЕразделимы.
+  function onRewardReceived(gain, acc) {
+    // Двигаем счётчик БЛОКОВ инкрементом в кэше (+1 блок, +gain к сумме) и сохраняем —
+    // БЕЗ полного пересчёта истории на каждой награде (иначе десятки запросов к ноде каждые
+    // несколько секунд, а потолок пагинации ограничивал бы число). Полный авторитетный пересчёт —
+    // один раз за сессию в initRewardsFromHistory (снимает возможный дрейф на ±1).
+    try {
+      localStorage["rewCnt_" + acc] = String(rewCount(acc) + 1);
+      localStorage["rewSum_" + acc] = (rewTotal(acc) + gain).toFixed(9);
+    } catch (e) {}
+    setText("minerRewards", String(rewCount(acc)));
+    if (window.__explorerOpen && typeof window.__renderExplorerMine === "function") window.__renderExplorerMine();
+    notify((window.L||function(r,e){return r})("💎 Награда за майнинг: +","💎 Mining reward: +") + gain.toFixed(2) + (window.L||function(r,e){return r})(" AXNT (счёт ", " AXNT (account ") + acc + ")", 0);
+    if (typeof window.crystalFlash === "function") window.crystalFlash(); // голубая вспышка граней
+    spawnCrystalPlus(gain); // всплывающее «+N AXNT» у грани кристалла
+    var bc = el("balanceCard");
+    if (bc) { bc.classList.remove("reward-flash"); void bc.offsetWidth; bc.classList.add("reward-flash"); }
+  }
+  // всплывающее «+N AXNT» у кристалла
+  function spawnCrystalPlus(gain) {
+    var host = el("balanceCard"); if (!host) return;
+    var t = document.createElement("div");
+    t.className = "crystal-plus";
+    t.textContent = "+" + gain.toFixed(2) + " AXNT";
+    host.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 2200);
+  }
+  function fmtHash(h) {
+    h = +h || 0;
+    if (h >= 1e6) return (h / 1e6).toFixed(2) + " MH/s";
+    if (h >= 1e3) return (h / 1e3).toFixed(2) + " kH/s";
+    return h.toFixed(0) + " H/s";
+  }
+  // SIZE_MINING_MEMORY приходит СЫРЫМИ БАЙТАМИ (1073741824 = 1 ГиБ), а подпись
+  // была «MB» → «1073741824 MB». Переводим байты в человекочитаемые GB/MB/KB (1024-база).
+  function fmtBytes(b) {
+    b = +b || 0;
+    if (b >= 1073741824) return (b / 1073741824).toFixed(b >= 10 * 1073741824 ? 0 : 1) + " GB";
+    if (b >= 1048576)    return Math.round(b / 1048576) + " MB";
+    if (b >= 1024)       return Math.round(b / 1024) + " KB";
+    return b + " B";
+  }
+
+  function el(id) { return document.getElementById(id); }
+  // ===== защита от тихих необратимых действий =====
+  window.CanSendTransaction = 0; // wallet-lib.js:15 стартует с 1 — до первого ПОДТВЕРЖДЁННОГО init запрет
+  var keySaveShown = 0;
+  function maybeKeySaveBanner() {
+    if (keySaveShown) return;
+    try { if (localStorage["keySavedAck"] === "1") { keySaveShown = 1; return; } } catch (e) {}
+    if (!isValidPubKey(window.PubKeyStr || "")) return; // ждём первый валидный ключ
+    var b = el("keySaveBanner"), ov = el("keySaveOverlay");
+    if (b) b.style.display = "block";
+    if (ov) ov.style.display = "block"; // свой оверлей; НЕ через openModal — closeModal не должен его закрыть
+    keySaveShown = 1;
+  }
+  // общие предохранители — из wallet-guards.js (один модуль на оба кошелька)
+  var isValidPubKey = WalletGuards.isValidPubKey, writesAllowed = WalletGuards.writesAllowed;
+  var noticeTimer = 0;
+  function notify(msg, isErr, sticky) { // видимый статус (SetError легаси уходит в скрытый idStatus)
+    var n = el("uiNotice"); if (!n) { console[isErr ? "error" : "log"](msg); return; }
+    n.textContent = msg; n.classList.toggle("err", !!isErr); n.style.display = "block";
+    n.dataset.sticky = sticky ? "1" : "";
+    clearTimeout(noticeTimer);
+    // sticky = висит до явного действия (предупреждение смены ключа — единственный
+    // барьер перед потерей доступа ко всем счетам, автоскрытие недопустимо).
+    if (!sticky) noticeTimer = setTimeout(function () { n.style.display = "none"; }, 6000);
+  }
+  function noticeClear() { var n = el("uiNotice"); if (n) { n.style.display = "none"; n.dataset.sticky = ""; } clearTimeout(noticeTimer); }
+  function setText(id, v) { var e = el(id); if (e) e.textContent = v; }
+
+  // Штатная формула — SumCOIN + SumCENT/1e9 (coinlib.js FLOAT_FROM_COIN).
+  function fmtAXNT(v) {
+    var n = (v && typeof v === "object" && typeof window.FLOAT_FROM_COIN === "function")
+            ? FLOAT_FROM_COIN(v) : (typeof v === "number" ? v : 0);
+    return n.toFixed(2);
+  }
+
+  function renderBalance() {
+    var Lf = window.L || function (r, e) { return r; };
+    setText("balValue", fmtAXNT(BAL.sum));
+    var list = el("acctList");
+    if (!list) return;
+    var html = "";
+    BAL.accounts.forEach(function (a) {
+      var miningOn = (BAL.mining.account === a.Num && !BAL.mining.paused && +BAL.mining.countCpu > 0);
+      html += '<div class="glass account acct-hist-link" data-acc="' + a.Num + '" title="' + Lf("История счёта", "Account history") + '">' +
+              '<div class="ic">∀</div>' +
+              '<div class="info">' +
+                '<b class="acc-name">' + (a.Name || "—") + '</b>' +
+                '<small>ID: <span class="acc-id" data-copy="' + a.Num + '" title="' + Lf("Копировать номер", "Copy number") + '">' + a.Num + '</span></small>' +
+                (miningOn ? '<small><span class="minedot on"></span><span>' + Lf("Майнинг Axinit", "Axinit mining") + '</span></small>' : '') +
+              '</div>' +
+              '<button class="acc-recv" data-recv="' + a.Num + '" title="' + (window.L||function(r,e){return r})("Показать адрес приёма","Show receive address") + '">' + (window.L||function(r,e){return r})("Получить","Receive") + '</button>' +
+              '<div class="bal"><b><span class="vsign">∀</span><span class="acc-bal">' +
+                fmtAXNT(a.Value) +
+              '</span></b><small>AXNT</small></div>' +
+              '</div>';
+    });
+    list.innerHTML = html; // только строки; кнопка создания статична
+    setText("acctCount", BAL.accounts.length);
+    // клик по счёту -> история
+    var links = list.querySelectorAll(".acct-hist-link");
+    for (var li = 0; li < links.length; li++) links[li].addEventListener("click", function () {
+      openHistory(+this.getAttribute("data-acc"));
+    });
+    var ids = list.querySelectorAll(".acc-id[data-copy]");
+    for (var ii = 0; ii < ids.length; ii++) ids[ii].addEventListener("click", function (ev) {
+      ev.stopPropagation(); copyText(this.getAttribute("data-copy"), Lf("счёт", "account")); // клик по номеру = скопировано (не история)
+    });
+    var recvs = list.querySelectorAll(".acc-recv[data-recv]");
+    for (var ri = 0; ri < recvs.length; ri++) recvs[ri].addEventListener("click", function (ev) {
+      ev.stopPropagation(); openRecv(+this.getAttribute("data-recv"));
+    });
+  }
+
+  window.__rerenderI18n = function () { // перерисовать динамические строки под новый язык
+    try {
+      renderNet(); renderMining(); renderBalance();
+      if (window.__explorerOpen) { renderExplorerChain(); window.__renderExplorerMine(); loadExplorerBlocks(); }
+      var ftm = el("idFullTableModal"); if (ftm && ftm.style.display === "block" && FT.mode) ftRender();
+    } catch (e) {}
+  };
+  function renderNet() {
+    var dot = el("netDot");
+    if (dot) dot.classList.toggle("on", NET.online);
+    // явный статус синхронизации (было только «online · block N» — не видно, догнал ли)
+    var Lf = window.L || function (r, e) { return r; };
+    var txt;
+    if (!NET.online) txt = Lf("— нет связи", "— offline");
+    else if (NET.synced) txt = Lf("✓ синхронизирован · блок ", "✓ synced · block ") + NET.block;
+    else {
+      // Реальный догон vs time-gap. Формула из wallet-full.js:~537-560.
+      var js = NET.jinn, BPL2 = 16; // BLOCK_PROCESSING_LENGTH*2
+      var loadedH = js ? (js.Header2 - js.Header1) : 0, loadedB = js ? (js.Block2 - js.Block1) : 0;
+      if (js && (loadedH > 0 || loadedB > 0)) {
+        // нода реально качает блоки -> процент + H:x B:x
+        var maxNum = NET.curBlock - 8; // CurBlockNum - BLOCK_PROCESSING_LENGTH
+        var lH = loadedH; if (loadedB > 0) lH = maxNum - NET.dbBlock;
+        var loaded = (lH + loadedB) / 2;
+        var pct = NET.delta > 0 ? 100 * (loaded * 0.95) / NET.delta : 0;
+        if (pct >= 100) pct = 99.99; if (pct < 0) pct = 0;
+        txt = Lf("синхронизация ", "syncing ") + pct.toFixed(1) + "% · (H:" + loadedH + " B:" + loadedB + ")";
+      } else {
+        // time-gap: цепь стояла, качать нечего -> просто отставание
+        txt = Lf("отстал на ", "behind by ") + NET.delta + Lf(" бл., догоню", " blocks, will catch up");
+      }
+    }
+    setText("netStatus", txt);
+    var nd = el("netStatus"); if (nd) nd.classList.toggle("on", NET.online && NET.synced);
+    document.body.classList.toggle("offline", !NET.online);
+  }
+
+  function renderMining() {
+    var Lf = window.L || function (r, e) { return r; };
+    // «идёт» = ФАКТИЧЕСКИЙ хешрейт > 0, а НЕ наличие счёта (USE_MINING=0 -> hash 0 -> потухло)
+    var miningOn = (+BAL.mining.hash > 0 && NET.online);
+    var btn = el("btnMine");
+    if (btn) btn.classList.toggle("mining", miningOn);
+    // Горизонтальная строка над статус-баром. Показываем, если майнинг настроен ИЛИ идёт.
+    var panel = el("minerPanel"), tab = el("minerTab");
+    var show = (!!BAL.mining.account || miningOn);
+    var collapsed = !!window.__minerCollapsedInit || !!window.__minerCollapsed;
+    if (panel) { panel.style.display = (show && !collapsed) ? "flex" : "none"; panel.classList.toggle("mining", miningOn); }
+    if (tab) { tab.style.display = (show && collapsed) ? "flex" : "none"; tab.classList.toggle("mining", miningOn); }
+    if (!show) return;
+    var st = el("minerState");
+    if (st) st.textContent = miningOn ? Lf("майнинг идёт", "mining") : (BAL.mining.paused ? Lf("пауза", "paused") : Lf("остановлен", "stopped"));
+    setText("minerAcc", BAL.mining.account ? ("№" + BAL.mining.account) : "—");
+    setText("minerHash", miningOn ? fmtHash(BAL.mining.hash) : "—");
+    var run = +BAL.mining.cpuRun || 0, max = +BAL.mining.countCpu || 0;
+    setText("minerCpu", max ? (run + "/" + max) : String(run)); // работает/выделено
+    setText("minerRam", BAL.mining.ram ? fmtBytes(BAL.mining.ram) : "—");
+    setText("minerRewards", String(rewCount(BAL.mining.account))); // КОЛИЧЕСТВО блоков (сумма — в Explorer)
+    initRewardsFromHistory(BAL.mining.account); // разовый досчёт из истории
+  }
+
+  function thinPoll() {
+    if (typeof window.GetData !== "function") return;
+    // Нода умерла -> GetData молчит -> без этого в подвале вечный «online».
+    if (NET.online && Date.now() - NET.lastOk > 6000) {
+      NET.online = false;
+      renderNet();
+    }
+    window.GetData("GetWalletInfo", {}, function (Data) {
+      if (!Data || !Data.result) return;
+      NET.online = true;
+      NET.lastOk = Date.now(); // отметка живости
+      NET.block = Data.BlockNumDB || 0;
+      BAL.mining.account = Data.MiningAccount;
+      BAL.mining.countCpu = Data.CountMiningCPU || 0;
+      BAL.mining.paused = Data.MiningPaused ? 1 : 0;
+      BAL.mining.hash = Data.HashRate || 0;
+      // RAM под майнинг и загруженные ядра (в GetWalletInfo/CONSTANTS). Число майнящих
+      // НОД в GetWalletInfo НЕТ — для него нужен отдельный peers-запрос, здесь не показывается.
+      BAL.mining.ram = (Data.CONSTANTS && (Data.CONSTANTS.SIZE_MINING_MEMORY || Data.CONSTANTS.JINN_MAX_MEMORY_USE)) || 0;
+      // Точные значения для предзаполнения панели мощности (память байт + процент CPU)
+      BAL.mining.memBytes = (Data.CONSTANTS && +Data.CONSTANTS.SIZE_MINING_MEMORY) || 0;
+      BAL.mining.percent = (Data.CONSTANTS && +Data.CONSTANTS.POW_MAX_PERCENT) || 0;
+      BAL.mining.cpuRun = Data.CountRunCPU || 0;
+      NET.delta = Math.max(0, (Data.CurBlockNum || 0) - (Data.BlockNumDB || 0));
+      NET.synced = NET.delta <= 4; // 3-4 блока отставания БД от tip — НОРМА, не «догоняю»
+      // Процент реального догона. JinnStat H:x/B:x — что качается прямо сейчас.
+      NET.jinn = Data.NodeSyncStatus || null;
+      NET.curBlock = Data.CurBlockNum || 0; NET.dbBlock = Data.BlockNumDB || 0;
+      // Explorer: max для пагинации берём ИЗ ЭТОГО ЖЕ ответа (GetWalletInfo отдаёт MaxAccID,
+      // BlockNumDB, VersionNum — html-server.js:843-850). GetCurrentInfo НЕ нужен, и он не
+      // отдаёт MaxNumBlockDB в этой сборке (был баг FT.max=0 → «в конец» вёл на первые блоки).
+      NET.maxAcc = Data.MaxAccID || 0;
+      if (Data.VersionNum !== undefined && Data.VersionNum !== null) NET.version = Data.VersionNum;
+      if (typeof window.PubKeyStr !== "undefined") window.PubKeyStr = Data.PublicKey || "";
+      if (typeof window.CanSendTransaction !== "undefined") {
+        // (а) WalletIsOpen, не WalletOpen — у ОТКРЫТОГО кошелька WalletOpen=undefined
+        // (core/wallet.js:41); (б) готовность — по отставанию БД, как штатный wallet-full.js:537.
+        var DeltaDB = (Data.CurBlockNum || 0) - (Data.BlockNumDB || 0);
+        // Плюс подтверждённый WalletCanSign и ВАЛИДНЫЙ PublicKey. Иначе CreateAccount
+        // уходит в цепь с ключом 00…00 — мёртвый счёт, средства замерзают навсегда.
+        // ⚠ ТИПЫ ноды: WalletCanSign = (WalletOpen!==false && KeyPair.WasInit) = ЧИСЛО 1
+        // (wallet.js:99), не boolean! «=== true» держал кнопку disabled на живой ноде.
+        window.CanSendTransaction = (Data.WalletIsOpen && !!Data.WalletCanSign &&
+          isValidPubKey(Data.PublicKey) && DeltaDB <= 16) ? 1 : 0; // 16 = BLOCK_PROCESSING_LENGTH*2
+        var bCA0 = el("btnCreateAccount");
+        if (bCA0) bCA0.disabled = (window.CanSendTransaction !== 1);
+      }
+      // guard pattern: ключ нужен только если открыт кошелёк и ключа в памяти ещё нет
+      if (Data.WalletCanSign && !window.PrivKeyStr && typeof window.LoadPrivateKey === "function") {
+        window.LoadPrivateKey();
+      }
+      // одноразовая инициализация легаси-state из ЭТОГО ЖЕ ответа:
+      // CONFIG_DATA (сброс NotInit), SetBlockChainConstant (крипто/время для подписи),
+      // карты валют/сети, SetArrLog. Заодно снимает гонку UpdatesData: SetAccountsData
+      // больше не выйдет по CONFIG_DATA.NotInit при любом порядке ответов.
+      if (window.CONFIG_DATA && CONFIG_DATA.NotInit && typeof window.SetConfigData === "function") {
+        SetConfigData(Data);
+      }
+      if (keyPending && typeof Data.PublicKey === "string" && Data.PublicKey.toLowerCase() === keyPending) {
+        keyPending = ""; clearTimeout(keyTimer);
+        notify((window.L||function(r,e){return r})("Ключ сменён и ПОДТВЕРЖДЁН нодой. Новый публичный: ","Key changed and CONFIRMED by node. New public: ") + Data.PublicKey.substr(0, 12) + "…", 0);
+        var pub2 = el("idPubKey"); if (pub2) pub2.value = Data.PublicKey;
+        keysClose();
+      }
+      if (minePending && BAL.mining.account === minePending) {
+        notify((window.L||function(r,e){return r})("Майнинг включён на счёт ","Mining enabled for account ") + minePending, 0);
+        minePending = 0;
+      }
+      renderNet();
+      renderMining();
+      maybeKeySaveBanner(); // показать призыв сохранить ключ при первом валидном ключе
+    });
+    window.GetData("/GetWalletAccounts", {}, function (Data) {
+      if (!Data || !Data.result) return;
+      BAL.accounts = Data.arr || [];
+      // SendMoneyBefore показывает «Подтвердить», только если получатель есть в
+      // MapAccounts (wallet-full-new.js:299). Свои счета кладём сами; чужие — позже.
+      if (window.MapAccounts) BAL.accounts.forEach(function (a) {
+        if (!MapAccounts[a.Num]) MapAccounts[a.Num] = {};
+        for (var k in a) MapAccounts[a.Num][k] = a[k];
+      });
+      BAL.sum = BAL.accounts.reduce(function (s, a) {
+        return s + (a.Value && typeof window.FLOAT_FROM_COIN === "function" ? FLOAT_FROM_COIN(a.Value) : 0);
+      }, 0);
+      // Видимый прирост баланса mining-счёта = награда принята (прямого счётчика
+      // намайненных блоков нода не отдаёт — считаем по фактическому росту баланса).
+      var mAcc = BAL.accounts.filter(function (a) { return a.Num === BAL.mining.account; })[0];
+      var mSum = mAcc && mAcc.Value && typeof window.FLOAT_FROM_COIN === "function" ? FLOAT_FROM_COIN(mAcc.Value) : 0;
+      // при СМЕНЕ mining-счёта база сбрасывается БЕЗ события (иначе баланс нового счёта
+      // засчитался бы ложной наградой).
+      if (BAL.mining.account !== MINER_PREV_ACC) { MINER_PREV_ACC = BAL.mining.account; MINER_PREV_REWARD_SUM = mSum; }
+      else if (MINER_PREV_REWARD_SUM !== null && mSum > MINER_PREV_REWARD_SUM + 1e-9) {
+        onRewardReceived(mSum - MINER_PREV_REWARD_SUM, BAL.mining.account);
+      }
+      MINER_PREV_REWARD_SUM = mSum;
+      renderBalance();
+      renderMining();
+    });
+  }
+
+  // Новый UI НЕ зовёт OnInitWallet → нода не пересканирует AccountMap сама, и счета,
+  // созданные ПОСЛЕ старта ноды, не попадают в /GetWalletAccounts. Дёргаем FindMyAccounts вручную.
+  function refreshMyAccounts() {
+    if (typeof window.GetData === "function") window.GetData("FindMyAccounts", {}, function () { if (typeof thinPoll === "function") thinPoll(); });
+  }
+  function scheduleAccountsRefresh() { // счёт попадает в блок за пару секунд — пересканить несколько раз
+    setTimeout(refreshMyAccounts, 3000); setTimeout(refreshMyAccounts, 7000); setTimeout(refreshMyAccounts, 12000);
+  }
+  var createArmed = 0;
+  function createReset() { // свернуть панель + сбросить подтверждение
+    var inp = el("newAccName"), panel = el("createPanel"), cbtn = el("createConfirm");
+    if (inp) inp.value = "";
+    if (panel) panel.classList.remove("open");
+    if (cbtn) cbtn.textContent = (window.L||function(r,e){return r})("Создать","Create");
+    createArmed = 0;
+  }
+  function openCreatePanel() { // клик по «+ Создать счёт» — раскрыть панель вниз (повторный — свернуть)
+    // Проверка НА КЛИКЕ, не только в опросе — двойной барьер
+    if (!writesAllowed() || window.CanSendTransaction !== 1 || !isValidPubKey(window.PubKeyStr || "")) {
+      notify((window.L||function(r,e){return r})("Кошелёк ещё не готов (ключ не подтверждён) — создание счёта заблокировано. Это защита от мёртвых счетов с ключом 00…00.","Wallet not ready (key unconfirmed) — account creation blocked. Protects against dead accounts with key 00…00."), 1);
+      return;
+    }
+    var panel = el("createPanel"), inp = el("newAccName");
+    if (panel && panel.classList.contains("open")) { createReset(); return; } // повторный клик = свернуть
+    createArmed = 0;
+    if (panel) panel.classList.add("open");
+    if (inp) setTimeout(function () { inp.focus(); }, 60); // после старта анимации раскрытия
+  }
+  function createSubmit() { // «Создать» / Enter — двухшаговое подтверждение, затем CreateAccount
+    var inp = el("newAccName"), cbtn = el("createConfirm");
+    if (!inp) return;
+    if (!writesAllowed() || window.CanSendTransaction !== 1 || !isValidPubKey(window.PubKeyStr || "")) {
+      notify((window.L||function(r,e){return r})("Кошелёк ещё не готов (ключ не подтверждён) — создание счёта заблокировано. Это защита от мёртвых счетов с ключом 00…00.","Wallet not ready (key unconfirmed) — account creation blocked. Protects against dead accounts with key 00…00."), 1);
+      return;
+    }
+    var name = (inp.value || "").trim();
+    if (!name) { inp.focus(); return; }
+    if (!createArmed) {
+      // Подтверждение (защита от случайного создания одинаковых счетов)
+      createArmed = 1;
+      var same = BAL.accounts.filter(function (a) { return (a.Name || "") === name; }).length;
+      var warn = (window.L||function(r,e){return r})("Создать счёт «","Create account “") + name + (window.L||function(r,e){return r})("»?","”?");
+      if (same) warn += (window.L||function(r,e){return r})(" ⚠ Счёт с таким именем УЖЕ ЕСТЬ."," ⚠ An account with this name ALREADY EXISTS.");
+      else if (BAL.accounts.length) warn += (window.L||function(r,e){return r})(" У вас уже "," You already have ") + BAL.accounts.length + (window.L||function(r,e){return r})(" сч."," acct(s).");
+      notify(warn + (window.L||function(r,e){return r})(" «Создать» ещё раз — подтвердить, «Закрыть» — отмена."," Click “Create” again to confirm, “Close” to cancel."), same ? 1 : 0);
+      if (cbtn) cbtn.textContent = (window.L||function(r,e){return r})("Точно создать?","Create for sure?");
+      return;
+    }
+    if (typeof window.CreateAccount !== "function") { notify((window.L||function(r,e){return r})("CreateAccount не загружен","CreateAccount not loaded"), 1); return; }
+    el("idAccountName").value = name;
+    window.CreateAccount();
+    scheduleAccountsRefresh(); // пересканировать карту счетов, иначе новый счёт не появится в списке
+    notify((window.L||function(r,e){return r})("Создаю счёт «","Creating account “") + name + (window.L||function(r,e){return r})("»… появится в списке через пару секунд","”… will appear in the list shortly"), 0);
+    createReset();
+  }
+  function onSend() {
+    var sel = el("sendFrom");
+    if (sel) {
+      sel.innerHTML = BAL.accounts.map(function (a) {
+        return '<option value="' + a.Num + '">' + a.Num + ' — ' + (a.Name || "—") + '</option>';
+      }).join("");
+    }
+    if (typeof window.openModal === "function") openModal("idSendForm");
+  }
+  function sendGo() {
+    if (typeof window.SendMoneyBefore !== "function") { notify((window.L||function(r,e){return r})("SendMoneyBefore не загружен","SendMoneyBefore not loaded"), 1); return; }
+    if (!writesAllowed()) { notify((window.L||function(r,e){return r})("Кошелёк ещё не готов — подождите пару секунд","Wallet not ready — wait a few seconds"), 1); return; }
+    var from = el("sendFrom").value, to = (el("sendTo").value || "").trim(),
+        sum = (el("sendAmount").value || "").trim();
+    if (!from) { notify((window.L||function(r,e){return r})("Нет счёта-отправителя — создайте счёт","No sender account — create one first"), 1); return; }
+    if (!to)   { el("sendTo").focus(); return; }
+    if (!sum)  { el("sendAmount").focus(); return; }
+    var amt = parseAmount(sum);
+    if (!amt) {
+      notify((window.L||function(r,e){return r})("Сумма — только простое число вида 123.456 (до 9 знаков после точки), больше нуля. «1e3», минус, буквы не принимаются.","Amount must be a plain number like 123.456 (up to 9 decimals), greater than zero. “1e3”, minus, letters rejected."), 1);
+      el("sendAmount").focus(); return;
+    }
+    sum = amt.canon; // канон разбирается ОДИНАКОВО и подтверждением, и сериализацией
+    // Свежий preflight получателя (wallet-guards.js: checkRecipient).
+    // Существующий счёт с нулевым/битым ключом ПРИНИМАЕТ переводы — монеты замерзают.
+    notify((window.L||function(r,e){return r})("Проверяю получателя ","Checking recipient ") + to + "…", 0);
+    WalletGuards.checkRecipient(to, function (err, It, pkHex) {
+      if (err) { notify(err, 1); return; }
+      if (window.MapAccounts) { if (!MapAccounts[It.Num]) MapAccounts[It.Num] = {}; for (var kk in It) MapAccounts[It.Num][kk] = It[kk]; }
+      var pv = el("uiToPubkey");
+      if (pv) pv.textContent = (window.L||function(r,e){return r})("Получатель №","Recipient №") + " " + It.Num + " · " + (It.Name || "—") + " · " + (window.L||function(r,e){return r})("ключ","key") + " " + pkHex.substr(0, 10) + "…" + pkHex.substr(-4) + " ✓";
+      proceedSend();
+    });
+    return;
+    function proceedSend() {
+    // FROM -> idAccount, PAY TO -> idTo (GetSendAccTo читает idTo!)
+    el("idAccount").value = from;
+    el("idTo").value = to;
+    el("idSumSend").value = sum;
+    el("idDescription").value = el("sendDesc").value || "";
+    // У статичного idNFT0 amount=0 -> CreateTransferTransaction отбивал ЛЮБУЮ сумму
+    // «Insufficient funds» (wallet-lib: CurToken.Amount<Amount), тихо в скрытый idStatus.
+    // Держим amount = балансу счёта-отправителя (актуально до первого прохода легаси-цикла;
+    // потом FillListNFT рендерит реальные idNFT* и переписывает FirstSelect).
+    var accFrom = BAL.accounts.filter(function (a) { return a.Num === +from; })[0];
+    var tok = el("idNFT0");
+    if (tok && accFrom && accFrom.Value && typeof window.FLOAT_FROM_COIN === "function")
+      tok.dataset.amount = String(FLOAT_FROM_COIN(accFrom.Value));
+    window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    // Гонка с легаси-CheckSending (UpdatesData после FindMyAccounts): он мог задизейблить
+    // idSendButton, а SendMoneyBefore при disabled выходит МОЛЧА. Пересчитать сейчас.
+    if (typeof window.CheckSending === "function") CheckSending();
+    var sb = el("idSendButton");
+    if (sb && sb.disabled) { notify((window.L||function(r,e){return r})("Ключ ещё подтягивается — попробуйте через 2-3 секунды","Key still loading — try again in 2-3 seconds"), 1); return; }
+    window.SendMoneyBefore(); // сама откроет штатную модалку подтверждения idBlockOnSend
+    } // конец proceedSend
+  }
+  // ===== ЕДИНЫЙ строгий парсер суммы (wallet-guards.js) =====
+  var parseAmount = WalletGuards.parseAmount;
+  function sendMax() {
+    var from = +el("sendFrom").value;
+    var acc = BAL.accounts.filter(function (a) { return a.Num === from; })[0];
+    if (acc && acc.Value && typeof window.FLOAT_FROM_COIN === "function")
+      el("sendAmount").value = String(FLOAT_FROM_COIN(acc.Value));
+  }
+  // ===== История транзакций (GetHistoryTransactions, постранично) =====
+  var HIST = { acc: 0, next: null, busy: 0 }; // next=null: первый запрос БЕЗ NextPos (нода: 0 -> пусто!)
+  function histSign(dir) { return dir === "-" ? "−" : "+"; }
+  // Копирование одним кликом (навигатор clipboard + видимый notify)
+  function copyText(str, label) {
+    str = String(str == null ? "" : str);
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(str); } catch (e) {}
+    notify((window.L||function(r,e){return r})("Скопировано","Copied") + (label ? " (" + label + ")" : "") + ": " + str.substr(0, 22) + (str.length > 22 ? "…" : ""), 0);
+  }
+  // Экран «Получить» (адрес приёма)
+  function openRecv(accNum) {
+    var a = BAL.accounts.filter(function (x) { return x.Num === accNum; })[0];
+    setText("recvTitle", (window.L||function(r,e){return r})("Получить на счёт №", "Receive to account №") + " " + accNum);
+    setText("recvNum", String(accNum));
+    var pub = el("recvPub"); if (pub) pub.value = a ? accPubHex(a) : "";
+    if (typeof window.openModal === "function") openModal("idRecvModal");
+  }
+  function openHistory(accNum) {
+    HIST.acc = accNum; HIST.next = null; HIST.busy = 0;
+    setText("histTitle", (window.L||function(r,e){return r})("История счёта №", "Account history №") + " " + accNum);
+    var lst = el("histList"); if (lst) lst.innerHTML = '<div class="hist-empty">' + (window.L||function(r,e){return r})("Загрузка…", "Loading…") + '</div>';
+    var more = el("histMore"); if (more) more.style.display = "none";
+    if (typeof window.openModal === "function") openModal("idHistModal");
+    loadHistory(true);
+  }
+  function loadHistory(fresh) {
+    if (HIST.busy || typeof window.GetData !== "function") return;
+    HIST.busy = 1;
+    // NextPos добавляем ТОЛЬКО для «дальше». На первой странице его нет вовсе —
+    // иначе нода получит 0 и вернёт пусто (GetHistory: while(Count>0 && Position), 0 falsy).
+    var params = { AccountID: HIST.acc, Count: 20, GetDescription: 1, GetTxID: 1 };
+    if (HIST.next) params.NextPos = HIST.next;
+    window.GetData("GetHistoryTransactions", params,
+      function (Data) {
+        HIST.busy = 0;
+        var lst = el("histList"); if (!lst) return;
+        if (fresh) lst.innerHTML = "";
+        var arr = (Data && Data.History) || [];
+        if (fresh && !arr.length) { lst.innerHTML = '<div class="hist-empty">' + (window.L||function(r,e){return r})("Пока нет транзакций", "No transactions yet") + '</div>'; }
+        var lastNext = 0;
+        arr.forEach(function (it) {
+          var incoming = (it.Direct !== "-"); // "+" входящая, "-" исходящая
+          var corr = it.CorrID; // корреспондент: для входящей — отправитель, для исходящей — получатель
+          var sum = (typeof window.FLOAT_FROM_COIN === "function")
+                    ? FLOAT_FROM_COIN({ SumCOIN: it.SumCOIN || 0, SumCENT: it.SumCENT || 0 }) : (it.SumCOIN || 0);
+          var when = (typeof window.DateFromBlock === "function") ? window.DateFromBlock(it.BlockNum) : ("блок " + it.BlockNum);
+          var who = incoming ? ((window.L||function(r,e){return r})("от №", "from №") + " " + corr) : ((window.L||function(r,e){return r})("кому №", "to №") + " " + corr);
+          var desc = it.Description ? (" · " + String(it.Description).substr(0, 40)) : "";
+          var row = document.createElement("div");
+          row.className = "hist-row " + (incoming ? "hist-in" : "hist-out");
+          var txid = it.TxID || "";
+          row.innerHTML = '<div class="hist-dir">' + histSign(it.Direct) + '</div>' +
+            '<div class="hist-mid"><b>' + who + '</b><small>' + when + desc +
+              (txid ? ' · <span class="hist-txid" data-copy="' + txid + '" title="' + (window.L||function(r,e){return r})("Копировать ID транзакции","Copy transaction ID") + '">tx ' + txid.substr(0, 8) + '…</span>' : '') + '</small></div>' +
+            '<div class="hist-amt">' + histSign(it.Direct) + sum.toFixed(2) + ' AXNT</div>';
+          var tx = row.querySelector(".hist-txid");
+          if (tx) tx.addEventListener("click", function (ev) { ev.stopPropagation(); copyText(this.getAttribute("data-copy"), "txID"); });
+          lst.appendChild(row);
+          if (it.NextPos) lastNext = it.NextPos;
+        });
+        // «Листать дальше»: NextPos последнего элемента = курсор следующей страницы
+        var more = el("histMore");
+        HIST.next = lastNext;
+        if (more) more.style.display = (arr.length >= 20 && lastNext) ? "" : "none";
+      });
+  }
+  var accPubHex = WalletGuards.accPubHex; // нормализация PubKey(массив) -> 66-hex
+  function myAccounts() {
+    // мои = валидный ключ счёта === валидному ключу кошелька. Empty/all-zero/битый — НЕ мой:
+    // после SetWalletKey("00…") мёртвые счета иначе стали бы «своими».
+    var my = (window.PubKeyStr || "").toLowerCase();
+    if (!isValidPubKey(my)) return [];
+    return BAL.accounts.filter(function (a) { var h = accPubHex(a); return isValidPubKey(h) && h === my; });
+  }
+  var minePending = 0;
+  function onMine() {
+    if (typeof window.SaveMiningSet !== "function") { notify((window.L||function(r,e){return r})("SaveMiningSet не загружен","SaveMiningSet not loaded"), 1); return; }
+    if (!writesAllowed() || window.CanSendTransaction !== 1) { notify((window.L||function(r,e){return r})("Кошелёк не готов (ключ не подтверждён) — майнинг подождёт","Wallet not ready (key unconfirmed) — mining will wait"), 1); return; }
+    var mine = myAccounts();
+    if (!mine.length) { notify((window.L||function(r,e){return r})("Сначала создайте счёт — майнить не на что","Create an account first — nothing to mine to"), 1); return; }
+    var cur = BAL.mining.account;
+    var ok = cur && mine.some(function (a) { return a.Num === cur; });
+    var def = ok ? cur : mine[0].Num;
+    var sel = el("mineAcc");
+    if (sel) sel.innerHTML = mine.map(function (a) {
+      return '<option value="' + a.Num + '"' + (a.Num === def ? " selected" : "") + '>' +
+             a.Num + ' — ' + (a.Name || "—") + '</option>';
+    }).join("");
+    // Предзаполнить поля мощности текущими значениями ноды
+    var Lf0 = window.L || function (r, e) { return r; };
+    var mm = el("mineMemGb");
+    if (mm) mm.value = BAL.mining.memBytes ? (BAL.mining.memBytes / 1073741824).toFixed(BAL.mining.memBytes % 1073741824 ? 1 : 0) : "";
+    var mp = el("mineCpuPct"); if (mp) mp.value = BAL.mining.percent || "";
+    minePowArmed = 0;
+    var pw0 = el("minePowWarn"); if (pw0) pw0.style.display = "none";
+    var pa0 = el("minePowApply"); if (pa0) pa0.textContent = Lf0("Применить мощность", "Apply power");
+    if (typeof window.openModal === "function") openModal("idMineForm");
+  }
+  // Применить мощность майнинга (память + %) — SaveConstant с DoMining:1 (перезапуск воркеров).
+  var minePowArmed = 0;
+  function minePowApply() {
+    var Lf = window.L || function (r, e) { return r; };
+    if (typeof window.GetData !== "function") { notify(Lf("Нода недоступна","Node unavailable"), 1); return; }
+    if (!NET.online) { notify(Lf("Нет связи с нодой — подождите пару секунд","No connection to node — wait a couple of seconds"), 1); return; }
+    var gb = parseFloat((el("mineMemGb") || {}).value);
+    var pct = parseInt((el("mineCpuPct") || {}).value, 10);
+    if (!(gb > 0)) { notify(Lf("Память: число ГБ больше 0 (например 1, 2, 0.5)","Memory: a number of GB > 0 (e.g. 1, 2, 0.5)"), 1); var f1 = el("mineMemGb"); if (f1) f1.focus(); return; }
+    if (!(pct >= 1 && pct <= 100)) { notify(Lf("Процент нагрузки: от 1 до 100","CPU load percent: 1 to 100"), 1); var f2 = el("mineCpuPct"); if (f2) f2.focus(); return; }
+    // Мягкое предупреждение при >половины ОЗУ — НЕ блок (кто-то отдаёт всё специально: выделенный
+    // майнинг/простой). navigator.deviceMemory — только Chromium, иначе undefined → без предупреждения.
+    var dm = navigator.deviceMemory, warnEl = el("minePowWarn"), btn = el("minePowApply");
+    if (dm && gb > dm / 2 && !minePowArmed) {
+      minePowArmed = 1;
+      if (warnEl) {
+        warnEl.style.display = "block";
+        warnEl.textContent = Lf("⚠ Больше половины памяти этого ПК (≈" + dm + " ГБ). Пока работаешь за компьютером — может тормозить и не хватать памяти другим программам. Для выделенного майнинга это нормально. Нажми ещё раз, чтобы применить.",
+          "⚠ More than half of this PC's memory (≈" + dm + " GB). While you use the computer it may lag and run low on memory for other apps. Fine for dedicated mining. Click again to apply.");
+      }
+      if (btn) btn.textContent = Lf("Точно применить?", "Apply anyway?");
+      return;
+    }
+    minePowArmed = 0;
+    if (warnEl) warnEl.style.display = "none";
+    if (btn) btn.textContent = Lf("Применить мощность", "Apply power");
+    var bytes = Math.round(gb * 1073741824);
+    notify(Lf("Применяю мощность…", "Applying power…"), 0);
+    window.GetData("SaveConstant", { SIZE_MINING_MEMORY: bytes, POW_MAX_PERCENT: pct, DoMining: 1 }, function (D) {
+      if (D && D.result) {
+        notify(Lf("Настройки сохранены: память ", "Saved: memory ") + gb + Lf(" ГБ, процессор ", " GB, CPU ") + pct + "%. " +
+               Lf("Вступят в силу после перезапуска ноды.", "They take effect after the node restarts."), 0);
+      } else {
+        notify(Lf("Не удалось сохранить настройки (нода отклонила запрос).", "Could not save settings (node rejected the request)."), 1);
+      }
+    });
+  }
+  function mineGo() {
+    var acc = +el("mineAcc").value;
+    if (!acc) return;
+    window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    window.SaveMiningSet(acc);
+    // Ответ SetMining обработчик глотает (wallet-node.js:256, пустой колбэк) —
+    // подтверждаем ФАКТОМ: следующий GetWalletInfo должен вернуть MiningAccount=acc.
+    minePending = acc;
+    notify((window.L||function(r,e){return r})("Включаю майнинг на счёт ","Enabling mining for account ") + acc + "…", 0);
+    setTimeout(function () {
+      if (minePending !== acc) return;
+      minePending = 0;
+      notify((window.L||function(r,e){return r})("Не удалось подтвердить майнинг: в конфиге счёт ","Could not confirm mining: config account ") + (BAL.mining.account || "—") +
+             (window.L||function(r,e){return r})(" (ожидался ", " (expected ") + acc + (window.L||function(r,e){return r})("). Проверьте const.lst.","). Check const.lst."), 1);
+    }, 7000);
+  }
+  function onSettings() {
+    var pub = el("idPubKey"); if (pub) pub.value = window.PubKeyStr || "";
+    var k = el("idKeyNew"); if (k) { k.value = ""; k.type = "password"; }
+    var sb = el("btnKeyShow"); if (sb) sb.textContent = (window.L||function(r,e){return r})("Показать","Show");
+    if (typeof window.openModal === "function") openModal("idKeysModal");
+  }
+  function keysClose() {
+    // при закрытии ключ уходит из DOM
+    keyArmed = 0; noticeClear();
+    var bsr = el("btnKeySave"); if (bsr) bsr.textContent = (window.L||function(r,e){return r})("Сохранить","Save");
+    var k = el("idKeyNew"); if (k) { k.value = ""; k.type = "password"; }
+    var sb = el("btnKeyShow"); if (sb) sb.textContent = (window.L||function(r,e){return r})("Показать","Show");
+    if (typeof window.closeModal === "function") { window.NotModalClose = 0; closeModal(); }
+  }
+  // ===== Смена ключа = подтверждение + commit только ПО ФАКТУ =====
+  var isValidPrivKey = WalletGuards.isValidPrivKey; // строгий secp256k1 (64-hex; watch-only 66 НЕ принимаем)
+  var keyArmed = 0, keyPending = "", keyTimer = 0;
+  function keySaveClick() {
+    if (!writesAllowed()) { notify((window.L||function(r,e){return r})("Кошелёк ещё не готов — подождите пару секунд","Wallet not ready — wait a few seconds"), 1); return; }
+    var k = el("idKeyNew");
+    var cand = ((k && k.value) || "").trim().toLowerCase();
+    if (!isValidPrivKey(cand)) {
+      notify((window.L||function(r,e){return r})("Невалидный приватный ключ: нужен 64-hex secp256k1-скаляр (не ноль, меньше n). Watch-only 66-hex не принимается.","Invalid private key: need a 64-hex secp256k1 scalar (non-zero, below n). Watch-only 66-hex rejected."), 1);
+      return;
+    }
+    if (!keyArmed) {
+      keyArmed = 1;
+      var n = BAL.accounts.length, sum = 0;
+      BAL.accounts.forEach(function (a) { if (a.Value && typeof window.FLOAT_FROM_COIN === "function") sum += FLOAT_FROM_COIN(a.Value); });
+      // sticky — предупреждение висит до действия, НЕ по таймеру.
+      notify((window.L||function(r,e){return r})("⚠ СМЕНА КЛЮЧА: ","⚠ KEY CHANGE: ") + n + (window.L||function(r,e){return r})(" счёт(ов) на "," account(s) with ") + sum.toFixed(2) + (window.L||function(r,e){return r})(" AXNT останутся на СТАРОМ ключе — доступ к ним пропадёт! Сначала сохраните текущий ключ («Показать» → скопировать). «Точно сменить ключ?» — подтвердить, «Закрыть» — отмена."," AXNT stay on the OLD key — you will lose access! Save the current key first (“Show” → copy). “Confirm key change?” to proceed, “Close” to cancel."), 1, true);
+      var bs = el("btnKeySave"); if (bs) bs.textContent = (window.L||function(r,e){return r})("Точно сменить ключ?","Confirm key change?");
+      return;
+    }
+    keyArmed = 0; noticeClear();
+    var bs2 = el("btnKeySave"); if (bs2) bs2.textContent = (window.L||function(r,e){return r})("Сохранить","Save");
+    try { keyPending = String(GetHexFromArr(SignLib.publicKeyCreate(GetArrFromHex(cand), 1))).toLowerCase(); }
+    catch (e) { notify((window.L||function(r,e){return r})("Не удалось вывести публичный ключ из кандидата: ","Could not derive public key from candidate: ") + e.message, 1); return; }
+    window.__keyExpectedPub = keyPending; // для автотестов
+    if (typeof window.SavePrivateKey === "function") SavePrivateKey(); // модалку НЕ закрываем, поле НЕ чистим
+    notify((window.L||function(r,e){return r})("Ключ отправлен ноде — жду подтверждения новым публичным ключом…","Key sent to node — waiting for confirmation via new public key…"), 0);
+    clearTimeout(keyTimer);
+    keyTimer = setTimeout(function () {
+      if (!keyPending) return;
+      keyPending = "";
+      notify((window.L||function(r,e){return r})("Смена ключа НЕ подтверждена за 10 с. Кандидат оставлен в поле — можно повторить. Проверьте ноду.","Key change NOT confirmed within 10s. Candidate kept — retry possible. Check the node."), 1);
+    }, 10000);
+  }
+  function keysToggleShow() {
+    var k = el("idKeyNew"), sb = el("btnKeyShow");
+    if (!k || !sb) return;
+    if (k.type === "password") {
+      var show = function () { k.value = window.PrivKeyStr || k.value; k.type = "text"; sb.textContent = (window.L||function(r,e){return r})("Скрыть","Hide"); };
+      if (!k.value && !window.PrivKeyStr && typeof window.LoadPrivateKey === "function") {
+        window.LoadPrivateKey(); setTimeout(show, 400); // явный GetWalletInfo{WithPrivateKey:1}
+      } else show();
+    } else { k.type = "password"; sb.textContent = (window.L||function(r,e){return r})("Показать","Show"); }
+  }
+  // btnSwap: disabled + бейдж «скоро» (OpenDapps(164) без HTMLLength —
+  // гарантированный no-op, client.js:1659-1660; SetStatus писал в скрытый idStatus — юзер
+  // не видел. Кнопка-пустышка хуже отсутствия кнопки.)
+
+  // ===== EXPLORER (обзор сети + статистика майнинга) =====
+  function fmtBlockDate(bn) {
+    if (typeof window.DateFromBlock === "function") { try { return window.DateFromBlock(bn); } catch (e) {} }
+    return (window.L || function (r, e) { return r; })("блок ", "block ") + bn;
+  }
+  // «Ваш майнинг»: кол-во намайненных блоков + сумма (из истории mining-счёта, единый источник данных с панелью майнинга)
+  window.__renderExplorerMine = function () {
+    var Lf = window.L || function (r, e) { return r; };
+    var acc = BAL.mining.account, has = !!acc;
+    var title = el("expMineTitle"), grid = el("expMineGrid"), note = el("expMineNote");
+    if (title) title.style.display = has ? "" : "none";
+    if (grid) grid.style.display = has ? "grid" : "none";
+    if (!has) { if (note) note.textContent = Lf("Майнинг-счёт не выбран — включите майнинг, чтобы копить статистику.", "No mining account — enable mining to accumulate stats."); return; }
+    setText("expBlocks", String(rewCount(acc)));
+    setText("expMined", rewTotal(acc).toFixed(2));
+    if (note) note.textContent = Lf("Счёт №", "Account №") + acc + Lf(". Данные из истории счёта (входящие от протокольного счёта 0), до 2000 последних наград.", ". From account history (incoming from protocol account 0), up to the last 2000 rewards.");
+    initRewardsFromHistory(acc, false); // подтянуть, если ещё не считали в этой сессии
+  };
+  function renderExplorerChain() {
+    var Lf = window.L || function (r, e) { return r; };
+    setText("expHeight", NET.block ? String(NET.block) : "—");
+    setText("expCurrent", NET.curBlock ? String(NET.curBlock) : "—");
+    setText("expVersion", (NET.version !== undefined && NET.version !== null && NET.version !== "") ? String(NET.version) : "—");
+    setText("expSync", NET.online ? (NET.synced ? Lf("✓ синхр.", "✓ synced") : (Lf("отстаёт ", "behind ") + NET.delta)) : Lf("нет связи", "offline"));
+  }
+  function loadExplorerBlocks() {
+    if (typeof window.GetData !== "function") return;
+    // Сеть/высота/версия уже в NET из опроса GetWalletInfo → renderExplorerChain. Здесь только блоки.
+    var height = NET.block || 0, N = 15, start = Math.max(0, height - N + 1);
+    window.GetData("GetBlockList", { StartNum: start, CountNum: N, ChainMode: 0 }, function (D) {
+      var lst = el("expBlockList"); if (!lst) return;
+      var Lf = window.L || function (r, e) { return r; };
+      var arr = (D && D.result && D.arr) || [];
+      if (!arr.length) { lst.innerHTML = '<div class="exp-empty">' + Lf("Нет данных о блоках", "No block data") + '</div>'; return; }
+      var mine = BAL.mining.account;
+      arr = arr.slice().sort(function (a, b) { return (b.BlockNum || 0) - (a.BlockNum || 0); }); // новые сверху
+      var html = "";
+      arr.forEach(function (bk) {
+        var isMine = (mine && +bk.Miner === +mine);
+        html += '<div class="exp-brow' + (isMine ? " mine" : "") + '">' +
+          '<span class="exp-bnum">#' + bk.BlockNum + '</span>' +
+          '<span class="exp-bmid">' + fmtBlockDate(bk.BlockNum) + ' · ' + Lf("майнер №", "miner №") +
+            '<b>' + (bk.Miner !== undefined ? bk.Miner : "—") + '</b> · Pow ' + (bk.Power !== undefined ? bk.Power : "—") + '</span>' +
+          (isMine ? '<span class="exp-btag">' + Lf("ваш", "yours") + '</span>' : '') +
+          '</div>';
+      });
+      lst.innerHTML = html;
+    });
+  }
+  function openExplorer() {
+    window.__explorerOpen = 1;
+    var ft = el("idFullTableModal"); if (ft) ft.style.display = "none"; // на всякий случай свернуть таблицу
+    var ex = el("idExplorerModal"); if (ex) ex.style.display = "block";
+    renderExplorerChain();
+    window.__renderExplorerMine();
+    var lst = el("expBlockList");
+    if (lst) lst.innerHTML = '<div class="exp-empty">' + (window.L || function (r, e) { return r; })("Загрузка…", "Loading…") + '</div>';
+    loadExplorerBlocks();
+    if (typeof window.openModal === "function") openModal("idExplorerModal");
+  }
+  function closeExplorer() {
+    window.__explorerOpen = 0; window.NotModalClose = 0;
+    if (typeof window.closeModal === "function") closeModal();
+  }
+
+  // ===== ПОЛНЫЕ ТАБЛИЦЫ (все блоки / все счета) с листанием — прозрачность =====
+  var FT = { mode: null, start: 0, max: 0, size: 20 };
+  function ftShortHex(v) {
+    var s = "";
+    if (typeof v === "string") s = v;
+    else if (v && typeof window.GetHexFromArr === "function") { try { s = GetHexFromArr(v); } catch (e) {} }
+    if (!s) return "—";
+    return s.length > 16 ? (s.substr(0, 10) + "…" + s.substr(-4)) : s;
+  }
+  function ftRender() {
+    // единый клапан: старт держим в [0 .. последняя_полная_страница], чтобы «в конец»/«в начало»/
+    // переход не убегали (был баг: при max=0 клапан пропускался).
+    var lastStart = Math.max(0, FT.max - FT.size + 1);
+    if (FT.start < 0) FT.start = 0;
+    if (FT.start > lastStart) FT.start = lastStart;
+    var num = el("ftNum"); if (num) num.value = FT.start;
+    if (FT.mode === "accounts") ftLoadAccounts(); else ftLoadBlocks();
+  }
+  function ftLoadBlocks() {
+    var Lf = window.L || function (r, e) { return r; };
+    if (typeof window.GetData !== "function") return;
+    window.GetData("GetBlockList", { StartNum: FT.start, CountNum: FT.size, ChainMode: 0 }, function (D) {
+      var head = el("ftHead"), body = el("ftBody"); if (!body) return;
+      if (head) head.innerHTML = '<tr><th class="num">#</th><th>' + Lf("Дата", "Date") + '</th><th class="num">' +
+        Lf("Майнер", "Miner") + '</th><th class="num">Pow</th><th class="num">' + Lf("Байт", "Bytes") + '</th><th>' +
+        Lf("Хеш блока", "Block hash") + '</th></tr>';
+      var arr = (D && D.result && D.arr) || [];
+      arr = arr.slice().sort(function (a, b) { return (b.BlockNum || 0) - (a.BlockNum || 0); });
+      var mine = BAL.mining.account, rows = "";
+      arr.forEach(function (bk) {
+        var isMine = (mine && +bk.Miner === +mine);
+        rows += '<tr' + (isMine ? ' class="ft-mine"' : '') + '>' +
+          '<td class="num">' + bk.BlockNum + '</td>' +
+          '<td>' + fmtBlockDate(bk.BlockNum) + '</td>' +
+          '<td class="num">' + (bk.Miner !== undefined ? bk.Miner : "—") + '</td>' +
+          '<td class="num">' + (bk.Power !== undefined ? bk.Power : "—") + '</td>' +
+          '<td class="num">' + (bk.TrDataLen !== undefined ? bk.TrDataLen : "—") + '</td>' +
+          '<td class="ft-hashcell">' + ftShortHex(bk.Hash) + '</td></tr>';
+      });
+      body.innerHTML = rows || '<tr><td colspan="6" class="ft-empty">' + Lf("Нет данных", "No data") + '</td></tr>';
+      setText("ftInfo", Lf("блоки ", "blocks ") + FT.start + "–" + (FT.start + FT.size - 1) + Lf(" из ", " of ") + FT.max);
+    });
+  }
+  function ftLoadAccounts() {
+    var Lf = window.L || function (r, e) { return r; };
+    if (typeof window.GetData !== "function") return;
+    window.GetData("GetAccountList", { StartNum: FT.start, CountNum: FT.size }, function (D) {
+      var head = el("ftHead"), body = el("ftBody"); if (!body) return;
+      if (head) head.innerHTML = '<tr><th class="num">ID</th><th>' + Lf("Имя", "Name") + '</th><th class="num">' +
+        Lf("Баланс", "Balance") + ' AXNT</th><th>' + Lf("Публичный ключ", "Public key") + '</th></tr>';
+      var arr = (D && D.arr) || [];
+      var mine = (window.PubKeyStr || "").toLowerCase(), rows = "";
+      arr.forEach(function (a) {
+        var bal = (a.Value && typeof window.FLOAT_FROM_COIN === "function") ? FLOAT_FROM_COIN(a.Value).toFixed(2) : "—";
+        var pk = accPubHex(a);
+        var isMine = (mine && pk === mine);
+        rows += '<tr' + (isMine ? ' class="ft-mine"' : '') + '>' +
+          '<td class="num">' + a.Num + '</td>' +
+          '<td>' + (a.Name || "—") + '</td>' +
+          '<td class="num">' + bal + '</td>' +
+          '<td class="ft-hashcell">' + ftShortHex(pk || a.PubKey || "") + '</td></tr>';
+      });
+      body.innerHTML = rows || '<tr><td colspan="4" class="ft-empty">' + Lf("Нет данных", "No data") + '</td></tr>';
+      setText("ftInfo", Lf("счета ", "accounts ") + FT.start + "–" + (FT.start + FT.size - 1) + Lf(" из ", " of ") + FT.max);
+    });
+  }
+  function openFullTable(mode) {
+    FT.mode = mode; FT.size = 20;
+    var Lf = window.L || function (r, e) { return r; };
+    setText("ftTitle", mode === "accounts" ? Lf("Все счета сети", "All network accounts") : Lf("Все блоки сети", "All network blocks"));
+    var body = el("ftBody"); if (body) body.innerHTML = '<tr><td class="ft-empty">' + Lf("Загрузка…", "Loading…") + '</td></tr>';
+    var ex = el("idExplorerModal"); if (ex) ex.style.display = "none";      // прячем обзор
+    var ft = el("idFullTableModal"); if (ft) ft.style.display = "block";    // показываем таблицу
+    var ov = el("idOverlay"); if (ov) ov.style.display = "block";
+    // max — из последнего опроса GetWalletInfo (BlockNumDB / MaxAccID), надёжно и синхронно.
+    FT.max = (mode === "accounts") ? (+NET.maxAcc || 0) : (+NET.block || 0);
+    FT.start = Math.max(0, FT.max - FT.size + 1); // открываем С КОНЦА — свежие блоки / последние счета
+    ftRender();
+  }
+  function ftBackToExplorer() { // «← Назад в обзор»
+    var ft = el("idFullTableModal"); if (ft) ft.style.display = "none";
+    var ex = el("idExplorerModal"); if (ex) ex.style.display = "block";
+  }
+  function ftPage(dir) { FT.start = FT.start + dir * FT.size; ftRender(); }       // клапан в ftRender
+  function ftFirstPage() { FT.start = 0; ftRender(); }
+  function ftLastPage() { FT.start = FT.max; ftRender(); }                          // ftRender прижмёт к последней странице
+  function ftGoto() { var v = parseInt((el("ftNum") || {}).value, 10); FT.start = isNaN(v) ? 0 : v; ftRender(); }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Безопасный SelectTab-стаб (wallet-lib.js:786 → setInterval(CheckSendList, 200)
+    // дёргает SelectTab("TabSend") при непустом localStorage.InvoiceList — но #TabSend нет
+    // в новом UI. Чистим ключ + переопределяем SelectTab на no-op.)
+    try { localStorage.removeItem("InvoiceList"); } catch (e) {}
+    window.SelectTab = function () { /* no-op для нового UI, см. onSelectTab() выше */ };
+    window.SaveValues = function () { /* no-op */ };
+    window.OnSelectTab = function () { /* no-op */ };
+    window.SetVisibleTab = function () { /* no-op */ };
+
+    // [UX] крестик закрытия во ВСЕХ модалках (кроме критичного окна «Сохраните ключ»).
+    (function addModalX() {
+      var cards = document.querySelectorAll(".modal-card");
+      for (var i = 0; i < cards.length; i++) {
+        var card = cards[i];
+        if (card.closest && card.closest("#keySaveBanner")) continue;
+        if (card.querySelector && card.querySelector(".modal-x")) continue;
+        var modal = card.closest ? card.closest(".Modal") : null;
+        var x = document.createElement("button");
+        x.type = "button"; x.className = "modal-x"; x.textContent = "×";
+        x.title = "Закрыть"; x.setAttribute("aria-label", "Закрыть");
+        x.setAttribute("data-ru-title", "Закрыть"); x.setAttribute("data-en-title", "Close");
+        x.setAttribute("data-x", (modal && modal.id === "idExplorerModal") ? "explorer" :
+                                 (modal && modal.id === "idFullTableModal") ? "fulltable" : "close");
+        card.insertBefore(x, card.firstChild);
+      }
+    })();
+    document.addEventListener("click", function (ev) {
+      var x = (ev.target && ev.target.closest) ? ev.target.closest(".modal-x") : null;
+      if (!x) return;
+      var mode = x.getAttribute("data-x");
+      if (mode === "explorer") { closeExplorer(); return; }
+      if (mode === "fulltable") { ftBackToExplorer(); return; }
+      minePowArmed = 0; keyArmed = 0; // сбросить подтверждения при закрытии крестиком
+      window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    });
+
+    // ошибки легаси уходят в СКРЫТЫЙ idStatus — зеркалим в видимый notify
+    var _origSetError = window.SetError;
+    if (typeof _origSetError === "function") window.SetError = function (Str) {
+      notify((window.L||function(r,e){return r})("Ошибка: ","Error: ") + Str, 1);
+      return _origSetError.apply(this, arguments);
+    };
+    // SaveEditAccount перепривязывает счёт к нулевому ключу.
+    // Account-edit UI в новом интерфейсе не возвращаем; щит — на случай возврата/скрытого вызова.
+    var _origSEA = window.SaveEditAccount;
+    if (typeof _origSEA === "function") window.SaveEditAccount = function () {
+      var pe = el("idPublicKeyEdit");
+      if (!pe || !isValidPubKey((pe.value || "").trim())) {
+        notify((window.L||function(r,e){return r})("SaveEditAccount заблокирован: невалидный/нулевой публичный ключ","SaveEditAccount blocked: invalid/zero public key"), 1);
+        return;
+      }
+      return _origSEA.apply(this, arguments);
+    };
+    var btnCA = el("btnCreateAccount"); if (btnCA) btnCA.addEventListener("click", openCreatePanel);
+    var cCf = el("createConfirm");      if (cCf) cCf.addEventListener("click", createSubmit);
+    var cCl = el("createClose");        if (cCl) cCl.addEventListener("click", createReset);
+    var nInp = el("newAccName");
+    if (nInp) nInp.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") createSubmit();
+      if (ev.key === "Escape") createReset();
+    });
+    var sGo = el("sendGo");     if (sGo) sGo.addEventListener("click", sendGo);
+    // Дефект: после SendMoney остаётся #idOverlay (SendMoney прячет только idBlockOnSend,
+    // wallet-lib.js:495 — не оверлей) → UI «залипает», нужен F5. RetResult/RetError — точные
+    // сигналы транзакции (client-tx.js:332/343). Возвращаем UI в рабочее состояние без перезагрузки.
+    var _origRetResult = window.RetResult;
+    if (typeof _origRetResult === "function") window.RetResult = function () {
+      var r = _origRetResult.apply(this, arguments);
+      try {
+        window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal(); // закрыть модалку + оверлей
+        notify((window.L||function(r,e){return r})("Отправлено ✓ — список счетов обновится через пару секунд","Sent ✓ — accounts list refreshes in a few seconds"), 0);
+        if (typeof thinPoll === "function") { thinPoll(); setTimeout(thinPoll, 1500); } // не ждать F5
+      } catch (e) {}
+      return r;
+    };
+    var _origRetError = window.RetError;
+    if (typeof _origRetError === "function") window.RetError = function () {
+      try { window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal(); } catch (e) {} // SetError уже зеркалится в notify
+      return _origRetError.apply(this, arguments);
+    };
+    var sCa = el("sendCancel"); if (sCa) sCa.addEventListener("click", function () {
+      window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    });
+    var sMx = el("sendMax");    if (sMx) sMx.addEventListener("click", function (ev) { ev.preventDefault(); sendMax(); });
+    // базовый токен для GetSelectedToken
+    var ln = el("idListNFT"); if (ln) ln.FirstSelect = "idNFT0";
+    // Сворачивание панели майнинга (вбок в ярлычок-кирку). Состояние — в localStorage.
+    function minerSetCollapsed(c) {
+      window.__minerCollapsed = !!c; window.__minerCollapsedInit = c ? 1 : 0;
+      try { localStorage["minerCollapsed"] = c ? "1" : ""; } catch (e) {}
+      renderMining(); // единый источник видимости панели/ярлыка
+    }
+    var mCol = el("minerCollapse"); if (mCol) mCol.addEventListener("click", function () { minerSetCollapsed(true); });
+    var mTab = el("minerTab");      if (mTab) mTab.addEventListener("click", function () { minerSetCollapsed(false); });
+    var hMore = el("histMore");  if (hMore) hMore.addEventListener("click", function () { loadHistory(false); });
+    var hCl = el("histClose");   if (hCl) hCl.addEventListener("click", function () {
+      window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    });
+    // баннер «Сохраните ключ»
+    var ksShow = el("keySaveShow"); if (ksShow) ksShow.addEventListener("click", onSettings); // показ ключа через штатную модалку
+    var ksAck = el("keySaveAck");   if (ksAck) ksAck.addEventListener("click", function () {
+      try { localStorage["keySavedAck"] = "1"; } catch (e) {}
+      var b2 = el("keySaveBanner"); if (b2) b2.style.display = "none";
+      var ov2 = el("keySaveOverlay"); if (ov2) ov2.style.display = "none";
+      notify((window.L||function(r,e){return r})("Отмечено: ключ сохранён. Береги его.", "Saved. Keep it safe."), 0);
+    });
+    // модалка Получить
+    var rCN = el("recvCopyNum"); if (rCN) rCN.addEventListener("click", function () { copyText(el("recvNum").textContent, (window.L||function(r,e){return r})("счёт","account")); });
+    var rCP = el("recvCopyPub"); if (rCP) rCP.addEventListener("click", function () { copyText(el("recvPub").value, (window.L||function(r,e){return r})("ключ","key")); });
+    var rCl = el("recvClose");   if (rCl) rCl.addEventListener("click", function () {
+      window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    });
+    try { if (localStorage["minerCollapsed"] === "1") window.__minerCollapsedInit = 1; } catch (e) {}
+    var navSendTab = el("navSend");
+    if (navSendTab) navSendTab.addEventListener("click", function (e) { e.preventDefault(); onSend(); }); // верхний таб SEND
+    // верхний таб EXPLORER -> модалка обзора
+    var navExpTab = el("navExplorer");
+    if (navExpTab) navExpTab.addEventListener("click", function (e) { e.preventDefault(); openExplorer(); });
+    var eRef = el("expRefresh"); if (eRef) eRef.addEventListener("click", function () { renderExplorerChain(); window.__renderExplorerMine(); loadExplorerBlocks(); });
+    var eCl = el("expClose"); if (eCl) eCl.addEventListener("click", closeExplorer);
+    var navAccTab = el("navAccounts");
+    if (navAccTab) navAccTab.addEventListener("click", function (e) { e.preventDefault(); closeExplorer(); }); // вернуться к счетам = закрыть оверлей
+    // полные таблицы блоков/счетов + пагинация
+    var eAllB = el("expAllBlocks");   if (eAllB) eAllB.addEventListener("click", function () { openFullTable("blocks"); });
+    var eAllA = el("expAllAccounts"); if (eAllA) eAllA.addEventListener("click", function () { openFullTable("accounts"); });
+    var ftFi = el("ftFirst"); if (ftFi) ftFi.addEventListener("click", ftFirstPage);
+    var ftPr = el("ftPrev");  if (ftPr) ftPr.addEventListener("click", function () { ftPage(-1); });
+    var ftNx = el("ftNext");  if (ftNx) ftNx.addEventListener("click", function () { ftPage(1); });
+    var ftLa = el("ftLast");  if (ftLa) ftLa.addEventListener("click", ftLastPage);
+    var ftGoB = el("ftGo");   if (ftGoB) ftGoB.addEventListener("click", ftGoto);
+    var ftNumI = el("ftNum"); if (ftNumI) ftNumI.addEventListener("keydown", function (ev) { if (ev.key === "Enter") ftGoto(); });
+    var ftClB = el("ftClose"); if (ftClB) ftClB.addEventListener("click", ftBackToExplorer);
+    var mGo = el("mineGo");     if (mGo) mGo.addEventListener("click", mineGo);
+    var mPow = el("minePowApply"); if (mPow) mPow.addEventListener("click", minePowApply); // мощность майнинга
+    var mPowC = el("minePowCancel"); if (mPowC) mPowC.addEventListener("click", function () {
+      minePowArmed = 0;
+      var w = el("minePowWarn"); if (w) w.style.display = "none";
+      var b = el("minePowApply"); if (b) b.textContent = (window.L||function(r,e){return r})("Применить мощность","Apply power");
+      window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    });
+    var mCa = el("mineCancel"); if (mCa) mCa.addEventListener("click", function () {
+      window.NotModalClose = 0; if (typeof window.closeModal === "function") closeModal();
+    });
+    var btnS  = el("btnSend");          if (btnS)  btnS.addEventListener("click", onSend);
+    var btnM  = el("btnMine");          if (btnM)  btnM.addEventListener("click", onMine);
+    var btnSt = el("btnSettings");      if (btnSt) btnSt.addEventListener("click", onSettings);
+    var bShow = el("btnKeyShow");  if (bShow) bShow.addEventListener("click", keysToggleShow);
+    var bGen  = el("btnKeyGen");   if (bGen)  bGen.addEventListener("click", function () {
+      if (typeof window.NewPrivateKey === "function") NewPrivateKey(); // idKeyNew (type=password — скрыт) + idPubKey
+    });
+    var bSave = el("btnKeySave");  if (bSave) bSave.addEventListener("click", keySaveClick);
+    var bKC   = el("btnKeysClose");if (bKC)  bKC.addEventListener("click", keysClose);
+    // Тонкий опрос (не OnInitWallet — это стартует 38-id цикл)
+    thinPoll();
+    setInterval(thinPoll, 2000);
+    setTimeout(refreshMyAccounts, 1500); // разово пересканить карту счетов при открытии кошелька
+    setInterval(refreshMyAccounts, 60000); // и раз в минуту — чтобы новые счета подхватывались
+  });
+})();
+</script>
+</body>
+</html>

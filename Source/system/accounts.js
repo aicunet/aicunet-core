@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -205,15 +207,26 @@ class AccountApp extends require("./accounts-hash")
     }
     GenesisAccountCreate()
     {
-        this.DBStateWriteInner({Num:0, PubKey:[], Value:{BlockNum:1, SumCOIN:0.95 * TOTAL_SUPPLY_TERA}, Name:"System account"}, 1)
-        for(var i = 1; i < 8; i++)
-            this.DBStateWriteInner({Num:i, PubKey:[], Value:{BlockNum:1}, Name:""})
-        
-        this.DBStateWriteInner({Num:8, PubKey:GetArrFromHex(ARR_PUB_KEY[0]), Value:{BlockNum:1, SumCOIN:0.05 * TOTAL_SUPPLY_TERA},
-            Name:"Founder account"})
-        this.DBStateWriteInner({Num:9, PubKey:GetArrFromHex(ARR_PUB_KEY[1]), Value:{BlockNum:1, SumCOIN:0}, Name:"Developer account"})
-        for(var i = 10; i < BLOCK_PROCESSING_LENGTH2; i++)
-            this.DBStateWriteInner({Num:i, PubKey:GetArrFromHex(ARR_PUB_KEY[i - 8]), Value:{BlockNum:1}, Name:""})
+        // AIcuNet genesis layout:
+        //   acc 0    = keyless protocol-faucet, PubKey:[], 1.0 * TOTAL_SUPPLY_TERA = 1e12 AXNT.
+        //              Чеканит через DoCoinBaseTR (сплит задан константами ниже).
+        //   acc 1–8  = служебные аккаунты проекта (pubkeys ниже), баланс 0 на genesis:
+        //                1 Fond One (5%-receiver)  2 dev (3%-receiver)  3 Team fund
+        //                4 Reserv 1                5 Reserv 2           6 Reserv 3
+        //                7 Airdrops                8 Governance
+        //   acc 9    = пустой.
+        //   acc 10+  НЕ засевается — майнинг-аккаунты создаются штатно через TRCreateAccount.
+        //              ARR_PUB_KEY остаётся как dev-test stub в crypto-library.js (LOCAL_RUN only).
+        this.DBStateWriteInner({Num:0, PubKey:[], Value:{BlockNum:1, SumCOIN:1.0 * TOTAL_SUPPLY_TERA}, Name:"AINET system account (keyless protocol-faucet, unspendable, PubKey:[], cap 1e12 AICU)"}, 1)
+        this.DBStateWriteInner({Num:1, PubKey:GetArrFromHex("02C3EED876CC107E52842BA104F0CABF1DD6F86419ACC4B046735A028E4B154CD0"), Value:{BlockNum:1, SumCOIN:0}, Name:"Fond One (5% split receiver)"})
+        this.DBStateWriteInner({Num:2, PubKey:GetArrFromHex("0296557A5FE9CD2B643544B5B3189CBC696665A666EF370CEB60FD4C2C74EC3A52"), Value:{BlockNum:1, SumCOIN:0}, Name:"Dev (3% split receiver)"})
+        this.DBStateWriteInner({Num:3, PubKey:GetArrFromHex("022783BC9667AC32E7C25A02EEA32021DB7CC663B42072BF493C748A2BFE6976B7"), Value:{BlockNum:1, SumCOIN:0}, Name:"Team fund"})
+        this.DBStateWriteInner({Num:4, PubKey:GetArrFromHex("03E4E6B1A416946A1A4B721D12E24AD326B03FC3CE3500BD3AA950D6B4A663EE7E"), Value:{BlockNum:1, SumCOIN:0}, Name:"Reserv 1"})
+        this.DBStateWriteInner({Num:5, PubKey:GetArrFromHex("02943DA6DCCE8DF34694FF6500E338186E50E9F4CC7F36F553D6394EA0143F5522"), Value:{BlockNum:1, SumCOIN:0}, Name:"Reserv 2"})
+        this.DBStateWriteInner({Num:6, PubKey:GetArrFromHex("02B4F263CB8C6B2B087C1F14CD44BCBA83751B2FE09C7C203F5AB30B19E54B4FDB"), Value:{BlockNum:1, SumCOIN:0}, Name:"Reserv 3"})
+        this.DBStateWriteInner({Num:7, PubKey:GetArrFromHex("03FFE5D4CD4D15542032C44088AB8AD4CD4B8C6186E695985A22E54F2424EE89BB"), Value:{BlockNum:1, SumCOIN:0}, Name:"Airdrops"})
+        this.DBStateWriteInner({Num:8, PubKey:GetArrFromHex("03D5274482AC55F6D3ED46A2544163B8BBF8124B3710C5B0E3AF6AA98EAC0D6CBD"), Value:{BlockNum:1, SumCOIN:0}, Name:"Governance"})
+        this.DBStateWriteInner({Num:9, PubKey:[], Value:{BlockNum:1, SumCOIN:0}, Name:"Reserved (empty)"})
     }
     
     DBStateTruncateInner(Num)
@@ -323,10 +336,7 @@ class AccountApp extends require("./accounts-hash")
     {
         if(Block.BlockNum < global.START_MINING)
             return;
-        
-        var SysData = this.ReadStateTR(0);
-        var SysBalance = SysData.Value.SumCOIN;
-        var REF_PERIOD_START = global.START_MINING;
+
         var AccountID = this.GetMinerFromBlock(Block);
         
         if(AccountID < 8)
@@ -340,64 +350,27 @@ class AccountApp extends require("./accounts-hash")
         
         if(Data && Data.Currency === 0 && Data.BlockNumCreate < Block.BlockNum)
         {
-            var Sum;
-            if(Block.BlockNum >= NEW_FORMULA_START)
-            {
-                if(Block.BlockNum <= NEW_FORMULA_TARGET1)
-                {
-                    Sum = SysBalance * 43 * 43 / 100 / TOTAL_SUPPLY_TERA;
-                    
-                    var KMult = (NEW_FORMULA_TARGET2 - Block.BlockNum) / (NEW_FORMULA_TARGET2 - NEW_FORMULA_START);
-                    Sum = KMult * Sum
-                }
-                else
-                {
-                    Sum = KTERA * SysBalance / TOTAL_SUPPLY_TERA;
-                }
-            }
-            else
-            {
-                var Power = GetPowPower(Block.PowHash);
-                if(Block.BlockNum >= NEW_BLOCK_REWARD1)
-                    Power = 43;
-                Sum = Power * Power * SysBalance / TOTAL_SUPPLY_TERA / 100;
-            }
-            
+            // AIcuNet flat reward: награда ФИКСИРОВАНА = AINET_BLOCK_REWARD КАЖДЫЙ блок, одинаково.
+            // M_boot (×Power/POWER_TARGET) УБРАН — он давал вариацию ниже/выше AINET_BLOCK_REWARD.
+            // База = global.AINET_BLOCK_REWARD (Source/core/constant.js). Эмиссия идёт через SendMoneyTR
+            // из acc 0 (keyless protocol-faucet), см. GenesisAccountCreate.
+            // Остаток округления идёт в Fond One (acc 1) — SUB(CoinFond, CoinMiner); SUB(CoinFond, CoinDev).
+            var Sum = global.AINET_BLOCK_REWARD;
+
+            // Сплит (miner / dev acc 2 / Fond One acc 1) — три SendMoneyTR из acc 0.
             var OperationNum = 0;
-            var CoinTotal = {SumCOIN:0, SumCENT:0};
             var CoinSum = COIN_FROM_FLOAT(Sum);
             if(!ISZERO(CoinSum))
             {
-                if(Data.Adviser >= 8 && Block.BlockNum < REF_PERIOD_END)
-                {
-                    
-                    var RefData = this.ReadStateTR(Data.Adviser);
-                    if(RefData && RefData.BlockNumCreate < Block.BlockNum - REF_PERIOD_MINING)
-                    {
-                        var K = (REF_PERIOD_END - Block.BlockNum) / (REF_PERIOD_END - REF_PERIOD_START);
-                        var CoinAdv = COIN_FROM_FLOAT(Sum * K);
-                        
-                        OperationNum++;
-                        this.SendMoneyTR(Block, 0, Data.Adviser, CoinAdv, Block.BlockNum, 0xFFFF, "", "Adviser coin base [" + AccountID + "]", 1, 0,
-                        OperationNum);
-                        ADD(CoinTotal, CoinAdv);
-                        
-                        ADD(CoinSum, CoinAdv);
-                    }
-                }
-                
-                OperationNum++;
-                this.SendMoneyTR(Block, 0, AccountID, CoinSum, Block.BlockNum, 0xFFFF, "", "Coin base", 1, 0, OperationNum)
-                ADD(CoinTotal, CoinSum);
-                
-                var CoinDevelop = CopyObjValue(CoinTotal);
-                DIV(CoinDevelop, 100);
-                
-                if(!ISZERO(CoinDevelop))
-                {
-                    OperationNum++;
-                    this.SendMoneyTR(Block, 0, 9, CoinDevelop, Block.BlockNum, 0xFFFF, "", "Developers support", 1, 0, OperationNum)
-                }
+                var CoinMiner = COIN_FROM_FLOAT(Sum * 0.92);            // майнер 92%
+                var CoinDev   = COIN_FROM_FLOAT(Sum * 0.03);            // dev 3% → acc 2
+                var CoinFond  = {SumCOIN:CoinSum.SumCOIN, SumCENT:CoinSum.SumCENT};
+                SUB(CoinFond, CoinMiner);                                // Fond One = остаток (округление + 5%) → acc 1
+                SUB(CoinFond, CoinDev);
+
+                OperationNum++; this.SendMoneyTR(Block, 0, AccountID, CoinMiner, Block.BlockNum, 0xFFFF, "", "Coin base miner", 1, 0, OperationNum);
+                OperationNum++; this.SendMoneyTR(Block, 0, 2,         CoinDev,   Block.BlockNum, 0xFFFF, "", "Coin base dev 3%", 1, 0, OperationNum);
+                OperationNum++; this.SendMoneyTR(Block, 0, 1,         CoinFond,  Block.BlockNum, 0xFFFF, "", "Coin base Fond One 5%", 1, 0, OperationNum);
             }
         }
     }
@@ -603,8 +576,11 @@ class AccountApp extends require("./accounts-hash")
         }
         else
         {
-            Token="TERA";
-            Value.IMG="/PIC/Tera.svg";
+            // AIcuNet: native currency ticker is "AXNT".
+            // This is the on-chain Token identifier for Currency=0 (returned in GetAccountList.BalanceArr[].Token).
+            // New chain genesis uses "AXNT" as the Currency=0 ticker.
+            Token="AXNT";
+            Value.IMG="/PIC/AICULogo.svg";
             IconBlockNum=undefined;
             IconTrNum=undefined;
         }

@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 var WasInitCurrency = 0;
@@ -46,6 +48,30 @@ var WasSetRestart = 0;
 function IsPrivateMode()
 {
     return IsPrivateKey(PrivKeyStr);
+}
+
+// ---- note: явная, разовая загрузка приватного ключа. ----
+// GetWalletInfo отдаёт ключ только при {WithPrivateKey:1} (html-server.js).
+// Кладём в sessionStorage — оттуда его берёт GetPrivKey() (client.js:1861),
+// на котором держится подпись транзакций (client-tx.js:320) и ComputeSecret.
+var PrivKeyLoading = 0;
+function LoadPrivateKey(Func)
+{
+    if(PrivKeyLoading)
+        return;
+    PrivKeyLoading = 1;
+    GetData("GetWalletInfo", {WithPrivateKey:1}, function (Data)
+    {
+        PrivKeyLoading = 0;
+        if(!Data || !Data.result || !Data.PrivateKey)
+            return;
+        PrivKeyStr = Data.PrivateKey;
+        if(window.sessionStorage)
+            sessionStorage[WALLET_KEY_NAME] = PrivKeyStr;
+        Storage.setItem(WALLET_KEY_NAME, "");
+        if(Func)
+            Func();
+    });
 }
 
 function NewPrivateKey()
@@ -595,9 +621,22 @@ function SetConfigData(Data)
     MaxShardNum = Data.MaxShardNum;
     
     PubKeyStr = Data.PublicKey;
-    PrivKeyStr = Data.PrivateKey;
-    sessionStorage[WALLET_KEY_NAME] = PrivKeyStr;
-    Storage.setItem(WALLET_KEY_NAME, "");
+
+    // ---- Ключ не приходит в рутинном ответе: забираем его один раз, явно. ----
+    // Если кошелёк может подписывать, а ключа у нас ещё нет — тянем LoadPrivateKey().
+    // Если кошелёк закрыт/ключа нет — чистим локальную копию. Один хук покрывает
+    // и старт, и открытие кошелька, и смену ключа (SavePrivateKey сбрасывает PrivKeyStr).
+    if(Data.WalletCanSign)
+    {
+        if(!PrivKeyStr)
+            LoadPrivateKey();
+    }
+    else
+    {
+        PrivKeyStr = "";
+        if(window.sessionStorage)
+            sessionStorage[WALLET_KEY_NAME] = "";
+    }
     
     WalletOpen = Data.WalletOpen;
     SetVisibleBtOpenWallet();

@@ -4,6 +4,8 @@
  * @license: Only for the TERA project
  * @copyright: Yuriy Ivanov (Vtools) 2019-2021 [progr76@gmail.com]
  * Telegram:  https://t.me/progr76
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -308,6 +310,21 @@ function InitClass(Engine)
     };
     Engine.AddFromMining = function (Block)
     {
+        // AIcuNet: time-slot gate (time-driven consensus; prevents over-mining)
+        // Block N belongs to time-slot N*CONSENSUS_PERIOD_TIME+FIRST_TIME_BLOCK. Reject
+        // local mining results arriving before their slot (lite worker can find hash in
+        // ~16ms — without this gate multiple workers race to ~1.7s/block vs target 3s).
+        // Critical: this is the ONLY common entry point for worker results (bFind=0/1 in
+        // SERVER.MiningProcess), so it covers both block creation paths. Does NOT cover
+        // catch-up (DoSaveMain, separate chain-fill path) or peer-sync (Engine.DB.WriteBlock
+        // in jinn-consensus.js) — by design (catch-up must be fast; peers are trusted).
+        var Now = Date.now() + (global.DELTA_CURRENT_TIME || 0);
+        var BlockTimeSlot = global.FIRST_TIME_BLOCK + Block.BlockNum * global.CONSENSUS_PERIOD_TIME;
+        if(Now < BlockTimeSlot)
+        {
+            JINN_WARNING >= 5 && Engine.ToLog("AddFromMining skip block=" + Block.BlockNum + " before time-slot (Delta=" + (BlockTimeSlot - Now) + "ms)", 5);
+            return 0;
+        }
         
         if(Engine.CheckMaxHashCreate)
             Engine.CheckMaxHashCreate(Block);

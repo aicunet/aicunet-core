@@ -6,6 +6,8 @@
  * Web: https://terafoundation.org
  * Twitter: https://twitter.com/terafoundation
  * Telegram:  https://t.me/terafoundation
+ * Modifications (c) 2026 AIcuNet
+ * Base: Tera commit 8d65eb4 (LICENSE: MIT). Upstream notice above kept unchanged. See LICENSE and NOTICE.
 */
 
 
@@ -17,6 +19,12 @@ try
 }
 catch(e)
 {
+}
+
+// AIcuNet: USE_UPNP gate — placed AFTER require
+if(global.USE_UPNP === 0)
+{
+    natUpnp = null; // AIcuNet: UPNP disabled in fork, STUN path will be used
 }
 
 if(global.LOCAL_RUN)
