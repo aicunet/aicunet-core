@@ -128,6 +128,7 @@ HostingCaller.GetBlockList = function (Params,response)
     if(!Params.CountNum)
         Params.CountNum = 1;
     
+    Params.Filter = undefined; // P54: no code filter from the public API (SERVER.GetRows evaluates it)
     return HTTPCaller.GetBlockList(Params, response);
 }
 
